@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#070508">
+<title>雾港</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#070508;color:#d5cbc0;
+ font-family:"Songti SC","SimSun",Georgia,serif;-webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
+#app{position:relative;width:100%;height:100%;overflow:hidden}
+#noise{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.16;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");mix-blend-mode:screen}
+#bg{position:absolute;inset:0;z-index:0;transition:opacity .9s;background:#050306}
+#bg::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(5,3,6,.9),rgba(8,3,6,.96))}
+#bg[data-mode="door"]{background:#120503 url('assets/red_door.png') center/cover no-repeat}
+#bg[data-mode="door"]::after{background:linear-gradient(rgba(4,2,3,.84),rgba(10,2,4,.93))}
+#bg[data-mode="glitch"]{background:#0a0406 url('assets/glitch_bg.jpg') center/cover no-repeat;animation:shift 6s steps(1) infinite}
+#bg[data-mode="glitch"]::after{background:linear-gradient(rgba(4,2,4,.9),rgba(8,2,4,.95))}
+@keyframes shift{0%,96%{transform:translate(0,0)}97%{transform:translate(-2px,1px)}98%{transform:translate(2px,-1px)}99%{transform:translate(0,0)}}
+#horror{position:absolute;inset:0;z-index:3;pointer-events:none}
+#horror .vig{position:absolute;inset:0;opacity:.72;animation:breath 3.2s ease-in-out infinite;
+ background:radial-gradient(ellipse at center,transparent 22%,rgba(92,0,12,.82) 100%)}
+@keyframes breath{0%,100%{opacity:.62}50%{opacity:.92}}
+#horror .scan{position:absolute;inset:0;opacity:.3;background:repeating-linear-gradient(0deg,rgba(0,0,0,.42) 0,rgba(0,0,0,.42) 1px,transparent 1px,transparent 5px);animation:scan 6s linear infinite}
+@keyframes scan{to{background-position:0 50px}}
+body.deep #horror .vig{background:radial-gradient(ellipse at center,transparent 10%,rgba(120,0,16,.9) 100%)}
+body.no-fx #noise,body.no-fx #horror .vig,body.no-fx #horror .scan,body.no-fx #bg[data-mode="glitch"]{animation:none!important}
+/* 血红 UI，非方块冲刺配色 */
+.blood h1,.blood h2,.blood .small,.blood .lead,.blood .opt,.blood .foot{color:#c9998e}
+.blood .panel{border-color:rgba(150,40,50,.34);background:rgba(12,5,8,.94)}
+.blood .btn{border-color:rgba(160,55,60,.4);color:#d4a89c;background:rgba(90,15,25,.08)}
+.blood .btn:active{background:rgba(140,25,35,.24)}
+.blood .cell{border-color:rgba(150,50,60,.28)}
+.layer{position:absolute;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;
+ padding:calc(env(safe-area-inset-top) + 16px) 15px calc(env(safe-area-inset-bottom) + 16px);text-align:center}
+.layer.on{display:flex}
+.panel{width:100%;max-width:440px;background:rgba(9,5,7,.95);border:1px solid rgba(150,50,55,.24);
+ border-radius:2px;padding:22px 18px;max-height:88vh;overflow-y:auto;touch-action:pan-y;
+ box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 16px 60px rgba(0,0,0,.8)}
+.panel.wide{max-width:760px}
+h1{font-size:34px;letter-spacing:10px;color:#d8c6b6;font-weight:400;text-indent:10px}
+h2{font-size:18px;font-weight:400;letter-spacing:3px;color:#c9a99c;margin-bottom:12px}
+.lead{font-size:13px;color:#a89c94;line-height:1.95;min-height:26px;margin:12px 0 2px}
+.small{font-size:12px;color:#8b807c;line-height:1.75;min-height:18px}
+.ver{font-size:11px;color:#6a5e5c;letter-spacing:1px;margin-top:14px}
+.btn{display:block;width:100%;margin:8px 0;padding:11px 14px;border:1px solid rgba(150,55,55,.4);
+ background:rgba(80,12,20,.07);color:#cbb4a8;border-radius:2px;font-size:14px;cursor:pointer;font-family:inherit;letter-spacing:1px}
+.btn:active{background:rgba(150,25,35,.22)}
+.btn.gray{border-color:rgba(140,120,115,.24);background:rgba(255,255,255,.02);color:#9c908c}
+.btn.red{border-color:rgba(190,40,50,.55);background:rgba(140,15,25,.14);color:#d48a86}
+.btn.sm{display:inline-block;width:auto;padding:7px 12px;margin:4px;font-size:12px}
+.row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+.foot{margin-top:13px;font-size:11px;color:#887a76;cursor:pointer;border-bottom:1px dotted #5b4c4a}
+input[type=text],input[type=password],textarea{width:100%;padding:10px;border:1px solid rgba(150,60,60,.4);border-radius:2px;
+ background:#0a0507;color:#d8c8bd;font-size:14px;font-family:inherit;outline:none;-webkit-user-select:text;user-select:text}
+textarea{height:100px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+label.chk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 9px;margin:5px 0;
+ border:1px solid rgba(255,255,255,.08);border-radius:2px;font-size:13px;text-align:left;cursor:pointer}
+label.chk input{width:16px;height:16px;accent-color:#8c2b33}
+select{background:#0f0709;color:#cdbcb2;border:1px solid rgba(150,60,60,.4);border-radius:2px;padding:6px;font-family:inherit;font-size:12px}
+.note{font-size:11px;color:#7e7270;line-height:1.8;margin:8px 0;text-align:left}
+/* 打字机 */
+#typeLine{min-height:1.9em;line-height:1.9;white-space:pre-wrap}
+.cur{display:inline-block;width:6px;height:13px;vertical-align:-2px;background:#a4474a;animation:blink .6s steps(1) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+body.no-fx .cur{animation:none}
+/* 叙事 */
+#story .panel{max-width:620px}
+#storyHead{color:#8f7d78}
+#storyText{text-align:left;font-size:14px;line-height:2;min-height:160px;max-height:46vh;overflow-y:auto;touch-action:pan-y;padding-right:4px}
+#storyText p{margin:0 0 .8em}
+#storyText p.frag{color:rgba(213,203,192,.48)}
+#opts{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.opt{display:block;width:100%;padding:10px 12px;border:1px solid rgba(150,60,60,.36);border-radius:2px;
+ background:rgba(90,15,25,.05);color:#cbb6ac;font-size:13px;cursor:pointer;text-align:left;font-family:inherit}
+.opt:active{background:rgba(150,25,35,.2)}
+.opt.new{border-color:rgba(190,90,60,.55);color:#d9a38c}
+#logToggle{font-size:11px;color:#827672;cursor:pointer;margin-top:10px}
+#logBox{display:none;max-height:28vh;overflow-y:auto;text-align:left;font-size:12px;line-height:1.8;color:#887e7b;
+ border-top:1px solid rgba(255,255,255,.07);padding-top:8px;margin-top:6px;touch-action:pan-y}
+#logBox.on{display:block}
+#fogIcon{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + 14px);z-index:30;width:52px;height:32px;opacity:.2;transition:opacity 1.2s}
+#fogIcon[data-fog="1"]{opacity:.16}#fogIcon[data-fog="2"]{opacity:.5}#fogIcon[data-fog="3"]{opacity:.9}
+#fogIcon svg{width:100%;height:100%;filter:blur(1px)}
+#fogTip{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + 52px);z-index:31;font-size:11px;color:#9b8a86;opacity:0;transition:opacity .3s;pointer-events:none}
+#fogTip.on{opacity:1}
+/* 图鉴 */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:9px 0}
+.cell{aspect-ratio:1;border:1px solid rgba(150,50,55,.24);border-radius:2px;display:flex;align-items:center;justify-content:center;
+ font-size:10px;color:#776b69;background:rgba(255,255,255,.015);cursor:pointer;padding:3px;overflow:hidden;word-break:break-all;line-height:1.25}
+.cell.open{border-color:rgba(190,70,70,.55);color:#d3b7ab;background:rgba(120,20,30,.1)}
+.cell.glitch3{animation:jit 2.8s steps(1) infinite}
+@keyframes jit{0%,94%{transform:translate(0,0)}95%{transform:translate(1px,0)}96%{transform:translate(-1px,0)}97%{transform:translate(0,0)}}
+body.no-fx .cell.glitch3{animation:none}
+.grpTitle{font-size:12px;color:#b59588;text-align:left;margin:11px 0 3px;letter-spacing:1px}
+.grpSum{font-size:11px;color:#93827d;text-align:left;line-height:1.7;margin:3px 0 7px}
+/* 命令 */
+.code{font-family:ui-monospace,Consolas,monospace;font-size:11px;line-height:1.8;color:#b5a098;background:#080406;
+ border:1px solid rgba(255,255,255,.06);border-radius:2px;padding:9px;text-align:left;min-height:40px;white-space:pre-wrap;
+ word-break:break-all;margin:8px 0;-webkit-user-select:text;user-select:text}
+#cmdBook{display:none;text-align:left;font-size:11px;color:#94857f;line-height:1.9;max-height:32vh;overflow-y:auto;touch-action:pan-y}
+#cmdBook.on{display:block}#cmdBook b{color:#cb9689}
+.warn{font-size:12px;color:#cf9a90;line-height:1.8;border:1px solid rgba(190,60,60,.3);
+ background:rgba(140,20,30,.06);border-radius:2px;padding:10px;margin:9px 0;text-align:left}
+/* 过场 / 首屏 */
+#intro{position:absolute;inset:0;z-index:90;background:#050305;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .6s}
+#intro.off{opacity:0;pointer-events:none}
+#intro svg{width:min(78vw,360px);height:150px;overflow:visible}
+#intro text{font-family:"Songti SC","SimSun",serif;font-size:96px;letter-spacing:18px;fill:transparent;
+ stroke:#c9b4a4;stroke-width:1.1;stroke-dasharray:1200;stroke-dashoffset:1200;animation:write 2.6s ease forwards}
+@keyframes write{to{stroke-dashoffset:0}}
+#intro .tip{position:absolute;bottom:34px;font-size:11px;color:#5e5252;letter-spacing:2px;animation:tipBreath 1.6s ease-in-out infinite}
+@keyframes tipBreath{0%,100%{opacity:.4}50%{opacity:1}}
+#flashFace{position:absolute;inset:0;z-index:88;pointer-events:none;opacity:0;background:#000 center/cover no-repeat;transition:opacity .1s}
+#flashFace.on{opacity:.92}
+#cross{position:absolute;inset:0;z-index:26;pointer-events:none;opacity:0;background:#120405 center/cover no-repeat;transition:opacity .18s}
+#cross.on{opacity:.55}
+/* 黑屏独白 / 质问 / 弹窗 */
+#blackout{position:absolute;inset:0;z-index:70;display:none;align-items:center;justify-content:center;background:#000;text-align:center;padding:26px}
+#blackout.on{display:flex}
+#blackout.shake{animation:shk .32s linear}
+@keyframes shk{0%,100%{transform:translate(0,0)}20%{transform:translate(-3px,2px)}40%{transform:translate(3px,-2px)}60%{transform:translate(-2px,-2px)}80%{transform:translate(2px,2px)}}
+#boText{font-size:15px;line-height:2;color:#bdada5;max-width:440px}
+#finale{position:absolute;inset:0;z-index:65;display:none;flex-direction:column;align-items:center;justify-content:center;
+ background:radial-gradient(ellipse at center,#260207 0%,#060003 72%);text-align:center;padding:24px}
+#finale.on{display:flex}#finale .q{font-size:20px;color:#cf807e;letter-spacing:2px;line-height:2;animation:fp 4.5s ease-in-out infinite}
+@keyframes fp{0%,100%{text-shadow:0 0 12px rgba(180,0,20,.5)}50%{text-shadow:0 0 30px rgba(220,0,30,.85)}}
+#finale .a{font-size:11px;color:#855556;margin-top:20px}
+#modal{position:absolute;inset:0;z-index:75;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.88);padding:20px}
+#modal.on{display:flex}#modal .panel{animation:pop .4s ease}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+#toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);z-index:85;pointer-events:none;
+ padding:8px 14px;border-radius:2px;background:rgba(0,0,0,.9);border:1px solid rgba(170,60,60,.4);
+ color:#d2a49b;font-size:12px;opacity:0;transition:opacity .25s;max-width:90%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.on{opacity:1}
+@media(max-width:420px){h1{font-size:28px}.grid{grid-template-columns:repeat(3,1fr)}#storyText{font-size:13px}}
+</style>
+</head>
+<body class="blood">
+<div id="app">
+  <div id="bg" data-mode="none"></div>
+  <div id="horror"><div class="vig"></div><div class="scan"></div></div>
+  <div id="noise"></div>
+  <div id="flashFace"></div><div id="cross"></div>
+
+  <div id="intro"><svg viewBox="0 0 360 130"><text x="180" y="96" text-anchor="middle">雾港</text></svg><div class="tip">点击继续</div></div>
+
+  <div id="menu" class="layer"><div class="panel">
+    <h1>雾港</h1>
+    <div class="lead" id="menuLead"></div>
+    <div class="small" id="menuStat"></div>
+    <button class="btn" id="btnStart">开始游戏</button>
+    <button class="btn gray" id="btnExp">实验性玩法</button>
+    <button class="btn gray" id="btnGallery">我的结局</button>
+    <button class="btn gray" id="btnAdv">高级</button>
+    <button class="btn gray" id="btnSet">设置</button>
+    <div class="foot" id="btnAbout">关于 · v2.0 · czy</div>
+  </div></div>
+
+  <div id="story" class="layer"><div class="panel">
+    <div class="small" id="storyHead"></div>
+    <div id="storyText"></div>
+    <div id="opts"></div>
+    <div id="logToggle">查看之前</div>
+    <div id="logBox" aria-live="polite"></div>
+  </div></div>
+  <div id="fogIcon" data-fog="1"><svg viewBox="0 0 108 68" preserveAspectRatio="none"><ellipse cx="30" cy="44" rx="30" ry="16" fill="#c9c9d6"/><ellipse cx="66" cy="40" rx="34" ry="18" fill="#c9c9d6"/><ellipse cx="48" cy="26" rx="26" ry="14" fill="#c9c9d6"/></svg></div>
+  <div id="fogTip">雾在变浓。</div>
+
+  <div id="gallery" class="layer"><div class="panel wide">
+    <h2>我的结局</h2><div class="small" id="galStat"></div><div id="galleryBody"></div>
+    <button class="btn gray" id="galBack">返回</button>
+  </div></div>
+
+  <div id="ending" class="layer"><div class="panel">
+    <div class="small" id="endNo"></div>
+    <div id="endText" style="text-align:left;line-height:2;font-size:14px;min-height:120px"></div>
+    <div class="row"><button class="btn sm" id="endHome">回主页</button><button class="btn sm gray" id="endGal">看我的结局</button></div>
+  </div></div>
+
+  <div id="advLayer" class="layer"><div class="panel">
+    <div id="advWarn"><h2>高级</h2><div class="warn">这里的东西可能改变你看到的故事。<br>不要在这里待太久。</div>
+      <div class="row"><button class="btn sm" id="advYes">继续</button><button class="btn sm gray" id="advNo">返回</button></div></div>
+    <div id="advPass" style="display:none"><h2>高级</h2><div class="small" id="passLabel">输入口令</div>
+      <input type="password" id="passInput" placeholder="口令" autocomplete="off">
+      <div class="row"><button class="btn sm" id="passGo">确认</button><button class="btn sm gray" id="passBack">返回</button></div></div>
+    <div id="advPanel" style="display:none"><h2>高级</h2>
+      <input type="text" id="cmdInput" placeholder="command" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="row"><button class="btn sm" id="cmdGo">Enter</button><button class="btn sm gray" id="cmdBookBtn">book</button></div>
+      <div class="code" id="cmdOut">ready.</div><div id="cmdBook"></div>
+      <button class="btn gray" id="advClose">关闭</button></div>
+  </div></div>
+
+  <div id="setLayer" class="layer"><div class="panel">
+    <h2>设置</h2><div id="setItems"></div><div class="row" id="extraRow"></div>
+    <button class="btn red sm" id="setErase">删除存档</button><button class="btn" id="setBack">返回</button>
+  </div></div>
+
+  <div id="aboutLayer" class="layer"><div class="panel">
+    <h2>关于</h2><div id="aboutText" style="text-align:left;line-height:2;font-size:13px;min-height:210px"></div>
+    <button class="btn" id="aboutBack">关闭</button>
+  </div></div>
+
+  <div id="blackout"><div id="boText"></div></div>
+  <div id="finale"><div class="q">你还记得她的脸吗？</div><div class="a">（没有回答。光标在闪。）</div><div class="row"><button class="btn sm" id="finBack">回主页</button></div></div>
+  <div id="modal"><div class="panel"><div id="modalBody"></div><button class="btn" id="modalClose">留在主页</button></div></div>
+  <div id="toast"></div>
+</div>
+
+<script>
+const GAME_DATA = {"scenes":[{"id":1,"name":"来信","nodes":[{"text":"信是周三到的。\n\n林晚的字，圆圆的，一笔一划都很用力，像她这个人。信不长：\n\n“这边事情比想的麻烦，可能要多待几天。你别担心，处理完我就回。冰箱里有饺子，别老吃外卖。”\n\n落款画了一个歪歪的笑脸。\n\n你把信翻过来，背面是空的。信封上邮戳模糊，只看得清“雾港”两个字。\n\n你给她打电话。关机。发消息。未读。\n\n冰箱里确实有饺子。冻得硬邦邦的，整整齐齐码了一层。","choices":"立刻出发 / 先报警 / 再等一天","clues":"无","state":"选后两项，记忆值 -10（“等待就是遗忘”）","table":[],"kind":"fog","fog":1,"branch":""},{"text":"信是周三到的。\n\n林晚的字。但和平时不太一样——最后一句“别担心”写得比前面用力，笔尖把纸戳出了一个洞。\n\n信纸上有一小块干掉的水渍，摸上去有点硬。不像是水。\n\n你给她打电话。关机。发消息。未读。\n\n你注意到信封上的邮戳：雾港，三天前。可你昨天才收到。\n\n冰箱里有饺子。冻得硬邦邦的，整整齐齐码了一层。你数了数，二十四个。林晚从来不会包这么多。","choices":"立刻出发 / 先报警 / 再等一天","clues":"无","state":"选后两项，记忆值 -10","table":[],"kind":"fog","fog":2,"branch":""},{"text":"信是周三到的。\n\n你读完一遍。林晚说她事情麻烦，要多待几天，让你别担心。\n\n你又读了一遍。有几个字不见了。\n\n不是被涂掉，是——没了。纸面上只剩下浅浅的凹痕，“别担心”的“担”字只剩一个“扌”。你眨眨眼，它又回来了。\n\n你给她打电话。关机。发消息。未读。\n\n你再看信。“雾港”两个字也在变淡。你赶紧把信纸翻过来，背面什么也没有。\n\n你拿出手机想拍下来。取景框里，信纸上的字比肉眼看到的少。\n\n冰箱里有饺子。你数了两遍，第一遍二十四个，第二遍二十三个。","choices":"立刻出发 / 先报警 / 再等一天","clues":"无","state":"选后两项，记忆值 -10","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":2,"name":"渡口","nodes":[{"text":"船靠岸的时候，天已经灰了。\n\n渡口只有一个人。老周，六十来岁，围裙上沾着鱼鳞，笑起来牙很白。\n\n“来找人啊？”他接过你的包，“镇上最近来的人多。”\n\n你问他林晚。他说：“哦，林老师家的闺女。”然后指了指西边，“旅馆在那边，热水六点到八点。”\n\n他没再说林晚。\n\n你又问了一次。他弯腰去解缆绳，一根绳子解了很久。\n\n旅馆门口摆着两个纸人，一左一右，像两个门童。脸上的白纸很新。\n\n你走过去的时候，其中一个的袖子动了一下。是风。","choices":"住旅馆 / 直接去林晚老家 / 去灯塔","clues":"F16 老周口述（雾 1 版）","state":"白灯笼首次出现，不解释","table":[],"kind":"fog","fog":1,"branch":""},{"text":"船靠岸的时候，天已经灰了。\n\n老周在解缆绳。他解得很慢，一根绳解了三遍。\n\n“来找人？”他没抬头，“住几天？”\n\n你说出了林晚的名字。\n\n他的手停了一下，然后继续解绳。\n\n“三天。”他说，“别待超过三天。”\n\n你问他为什么。\n\n“热水六点到八点。”他说。\n\n旅馆门口两个纸人。你走过去，回头看，纸人的脸朝着你。\n\n你换了个位置。纸人还是朝着你。\n\n檐下挂着白灯笼，没点。灯笼很轻地摆了一下。","choices":"住旅馆 / 直接去林晚老家 / 去灯塔","clues":"F16（雾 2 版）","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"船靠岸的时候，天已经灰了。\n\n老周站在渡口，像已经站了很久。\n\n“你来晚了。”他说。\n\n你问他林晚在哪。\n\n他看你，看了很长时间，长到你数了三遍他的皱纹。\n\n“你找谁来着？”他问。\n\n你又说了一遍林晚的名字。\n\n“哦。”他说，“林老师家的闺女。”\n\n他转身去解缆绳。缆绳早解开了，他又解了一遍。\n\n旅馆门口两个纸人，一个朝东，一个朝西。你经过的时候，朝西的那个转了过来。\n\n没有风。檐下的白灯笼晃了一下。\n\n你回头。老周还在解那根绳。","choices":"住旅馆 / 直接去林晚老家 / 去灯塔","clues":"F16（雾 3 版）","state":"无","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":3,"name":"旅馆中庭","nodes":[{"text":"旅馆是两层的老木楼，天井里种着一棵不结果的石榴。\n\n老周把钥匙放在柜台上，说：“二楼，三号。楼梯右边。”\n\n天井里坐着一个老太太，在剥豆子。她剥得很慢，豆子落在搪瓷盆里，一声一声。\n\n你问她林晚。\n\n她没抬头。“三号。”她说，“你住三号。”\n\n三条路：上楼回房，出门往东是老家的方向，往西是灯塔。","choices":"去房间 / 去老家 / 去灯塔 / 跟老周多聊两句","clues":"F01 登记簿（微恐仅见姓名栏）、M05 纸人摆法","state":"无","table":[],"kind":"fog","fog":1,"branch":""},{"text":"旅馆是两层的老木楼，天井里种着一棵不结果的石榴。\n\n老周把钥匙放在柜台上。“二楼，三号。”\n\n楼上传来脚步声。从东头走到西头，停一下，又走回来。\n\n你抬头。二楼的走廊是空的。\n\n“楼上有人？”你问。\n\n“没人。”老周说，“楼上不住人。”\n\n脚步声停在你头顶的位置。\n\n天井角落摆着三个纸人，围着一个小方桌，像在吃饭。你数了数碗，四只。\n\n你刚才进来的时候，纸人是两个。","choices":"去房间 / 去老家 / 去灯塔 / 跟老周多聊两句","clues":"F01、M05","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"旅馆是两层的老木楼，天井里种着一棵不结果的石榴。\n\n老周把钥匙放在柜台上。登记簿摊在旁边，翻到最后一页。\n\n林晚的名字在倒数第二行。\n\n她的名字下面，是你的名字。时间是今天，晚上七点四十。\n\n你没写过。\n\n你抬头看墙上的钟。七点三十八。\n\n楼上传来脚步声。从东头走到西头，停一下，又走回来。你数着步子，数到十七，又从头开始。\n\n“楼上有人？”你问。\n\n“没人。”老周说，“楼上一直没人。”\n\n你再看登记簿。你的名字比刚才淡了一点。","choices":"去房间 / 去老家 / 去灯塔 / 跟老周多聊两句","clues":"F01（雾 3 才明显）","state":"记忆值 -5（看见自己没写的字）","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":4,"name":"旅馆房间","nodes":[{"text":"三号房很小。一张床，一张桌子，一扇朝西的窗。\n\n窗外是海，海上有雾。雾贴着水面，一动不动。\n\n床头柜的抽屉里有一叠信纸。最上面那张有字，是林晚的笔迹，写了一半：\n\n“别来。来了就——”\n\n后面是空的。笔尖在纸上拖出一道很长的划痕。\n\n抽屉里还有一张没寄出去的信封，收信人写的是你的名字。","choices":"带走信 / 拍照 / 放回去","clues":"F03 未寄出的信","state":"带走 → 记忆值 -5","table":[],"kind":"fog","fog":1,"branch":""},{"text":"三号房很小。一张床，一张桌子，一扇朝西的窗。\n\n窗外是海，海上有雾。\n\n床头柜抽屉里有一叠信纸，最上面那张写着：“别来，来了就走不了。”\n\n字很急，最后三个字挤在一起。\n\n你摸床头。木头上有刻痕，很深，像是用钥匙一点点划的：\n\n“我也来找人。我忘了她叫什么。”\n\n字迹很旧，木头的毛刺都磨圆了。\n\n你把手指退回来。指腹上有一层薄薄的木屑，是新的。","choices":"带走信 / 拍照 / 放回去","clues":"F03、F04 床头旧刻字","state":"带走 → 记忆值 -5","table":[],"kind":"fog","fog":2,"branch":""},{"text":"三号房很小。一张床，一张桌子，一扇朝西的窗。\n\n抽屉里有一张没寄出的信：“别来，来了就走不了。”\n\n床头的刻字有两行。上面一行很旧：“我也来找人。我忘了她叫什么。”\n\n下面一行很新：\n\n“这次我记得。她叫林晚。下次可能就不记得了。”\n\n刻痕边缘的木刺还很尖。你伸手碰了一下，指尖有点疼。\n\n你把手指含进嘴里。有铁锈味。\n\n窗外，雾贴着水面。你看了很久，发现雾一直没有动。\n\n但它在离你近一点。每次你眨眼，就近一点。","choices":"带走信 / 拍照 / 放回去","clues":"F03、F04、F05（二周目+ 才出现第二行）","state":"带走 → 记忆值 -5；拍下刻字 → 记忆值 -10（“留下证据，也留下痕迹”）","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":5,"name":"林晚老家","nodes":[{"text":"老屋在镇子东头，门没锁。\n\n屋里很干净。桌子上没有灰，茶杯倒扣着，床铺叠得整整齐齐。像有人定期来打扫。\n\n墙上挂着一张全家福。林晚站在中间，笑得露出虎牙，旁边是她母亲，再旁边是一个男人的半张脸——照片被人剪过，那个人的脸只剩下一道肩膀。\n\n你走进里屋。墙角摆着一个纸人，半人高，脸上是空白的。镇上的手艺，你猜。白纸糊的，有点粗糙。\n\n你回头看了一眼照片上的林晚。再看向纸人。\n\n纸人的脸还是空白的。\n\n你拿起桌上的日记本。林晚的字，和信上一样。","choices":"带走日记 / 拿走录音带 / 拿走照片 / 什么都不拿","clues":"F06 日记、F08 全家福、M01 纸人、I01 照片、I02 录音带","state":"无（纸人脸仍空白，不触发升级）","table":[],"kind":"fog","fog":1,"branch":""},{"text":"老屋在镇子东头，门没锁。\n\n屋里很干净，干净得不像三个月没人住。茶杯倒扣着，床铺叠得整整齐齐。厨房的碗架上，只有一副碗筷。\n\n墙上挂着一张全家福。林晚站在中间，旁边是她母亲。再旁边是一个男人的半张脸，照片被人剪过，只留下一道肩膀。照片背面写着两个字：“别回来。”\n\n你走进里屋。墙角摆着一个纸人。\n\n你第一次看的时候，它的脸是空白的。你拿起桌上的日记本，翻了几页。林晚写着：“妈走之前一直在说地宫。她让我千万别下去。”\n\n你合上日记，又看了一眼纸人。\n\n纸人的脸有了轮廓。很淡，但能看出来——是林晚小时候的样子。眉眼，鼻子，那颗虎牙。\n\n你盯着它。它当然不会动。纸人不会动。\n\n你又看向照片。照片里林晚的脸，好像比刚才淡了一点。\n\n雾从窗缝里渗进来。你觉得屋里比刚才冷。","choices":"带走日记 / 拿走录音带 / 拿走照片 / 什么都不拿","clues":"F06、F07、F08、R02、M01、I01、I02","state":"雾 1 → 2**（看到纸人脸变成林晚）","table":[],"kind":"fog","fog":2,"branch":""},{"text":"老屋在镇子东头，门没锁。\n\n屋里很干净。茶杯倒扣着，床铺叠得整整齐齐。厨房的碗架上只有一副碗筷。你数了两遍，第二遍是两副。第三遍又是一副。\n\n墙上挂着一张全家福。林晚站在中间。你看着她，忽然发现自己想不起她现在的样子了——照片里的是她十八岁，虎牙，马尾。你认识她的时候她已经不扎马尾了。她现在的头发是什么颜色来着？\n\n你掏出手机，翻相册。你们最近一张合照，她的脸——有点模糊。像是镜头没对上焦。你放大，再放大。像素在，但脸就是不清楚。\n\n里屋墙角摆着一个纸人。\n\n你第一眼看见它的时候，它的脸是空白的。你拿起日记本，翻了几页。林晚写着：“妈走之前一直在说地宫。她说地宫里有一面镜子，翻过来就能看见已经走了的人。她让我千万别下去。我没听她的。”\n\n你合上日记，再看向纸人。\n\n纸人的脸已经长出来了。是林晚。是现在的林晚。你今天早上出发前最后看了一眼她的照片，就是这张脸。\n\n你后退一步。纸人没有动。但你注意到它的右手——纸做的手，食指微微弯着，像是在指什么。指向墙角，那儿有个录音带。\n\n雾从窗缝里渗进来。你听见楼下有人在说话。你听不清说什么，但那个声音像老周。\n\n你忽然很确定一件事：这间屋子里，有什么东西在记你的位置。你站在哪里，你看了什么，你记住了什么。它在记。","choices":"带走日记 / 拿走录音带 / 拿走照片 / 什么都不拿","clues":"F06、F07、F08、R02、M01、I01、I02","state":"雾 1 → 2**；带走的每样东西记忆值 -5（“回忆会加速遗忘”）","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":6,"name":"灯塔外围","nodes":[{"text":"灯塔在镇子西头，站在礁石上，白墙黑顶，比照片里旧。\n\n门锁着。锁是新的，铜的，亮得不像海边的铁器。\n\n你绕着塔基走了一圈。四道门：正面的铁门；东侧砖缝里有一道暗门，缝里塞着干草；北面地下入口，被生锈的铁栅栏封着；西墙有一个凹槽，形状像一面立起来的镜子。\n\n没有第四把钥匙孔。\n\n海在下面拍礁石。你数着浪，数到第七下，发现第七下没有来。","choices":"试着撬锁 / 找钥匙 / 回中庭","clues":"F09 灯塔日志（窗台上的册子）、I03 铜锁","state":"无","table":[],"kind":"fog","fog":1,"branch":""},{"text":"灯塔在镇子西头，站在礁石上。\n\n门锁着。锁是新的，铜的。锁孔是旧的，边缘磨得发亮，像被插过很多次。\n\n窗台上有一本册子，被雨泡过，纸页粘在一起。\n\n你翻开。上面是一列日期，每隔几十年一条，每条后面跟着一个名字。\n\n最近一条是三个月前。\n\n名字是林晚。\n\n你往后翻。后面还有一页，墨迹是新的，没写完，停在半个字上。\n\n东侧砖缝里有风。暗门后面有东西在动，很轻，像纸。","choices":"试着撬锁 / 找钥匙 / 回中庭","clues":"F09、I03","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"灯塔在镇子西头，站在礁石上。\n\n门锁着。锁是新的，铜的。锁孔是旧的。\n\n窗台上的册子被雨泡过。你翻到最后一页。\n\n林晚的名字在倒数第二行。\n\n她的名字下面还有一行，墨迹没干。你伸手碰了一下，指尖黑了一块。\n\n那行字是你的名字。\n\n你翻回前面，数了数名字。一共八十六个。\n\n你是第八十七个。\n\n东侧砖缝里有风。暗门后面有声音，像有人在里面，用指甲刮木板。\n\n你敲了敲墙。声音停了。\n\n过了一会儿，又开始了，这次慢一点，一下，一下。","choices":"试着撬锁 / 找钥匙 / 回中庭","clues":"F09（雾 3 版，含主角名字）、I03、F12 线索前置","state":"记忆值 -5","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":7,"name":"回中庭·第一次转折","nodes":[{"text":"你回到中庭。天井里多了一张竹椅，老太太还在剥豆子。\n\n搪瓷盆里的豆子没有变多。\n\n你决定再待一天。老周给你续了房钱，说：“住着吧。”\n\n镇民从门口经过，都很客气。有人朝你点头。\n\n但他们不太看你的眼睛。你看过去的时候，他们的目光刚好落在别处。","choices":"妥协离开 / 对抗 / 假装离开再潜入","clues":"M05 纸人摆法（多一个空位）","state":"无","table":[],"kind":"fog","fog":1,"branch":""},{"text":"你回到中庭。天井里多了一张竹椅，老太太还在剥豆子。\n\n搪瓷盆里的豆子没有变多。\n\n门口站着一个穿黑衣的人，很瘦，手里提着一盏没点的灯笼。\n\n“走吧。”他说，“天黑前走。”\n\n你问他是谁。\n\n他没回答。他把灯笼举起来，朝你的方向。\n\n天井角落的纸人，一共七个，全部转了过来。它们没有脸，但你知道它们在看你。\n\n石榴树上的叶子一片也没动。","choices":"妥协离开 / 对抗 / 假装离开再潜入","clues":"M05、F17 守夜人的话（前置）","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"你回到中庭。天井里多了一张竹椅，老太太还在剥豆子。\n\n搪瓷盆里的豆子没有变多。你数了两遍，都是三十七颗。\n\n老周从柜台后面出来，看见你，愣了一下。\n\n“你住店登记了吗？”他问。\n\n你说登记了。昨天晚上，七点四十。\n\n他翻开登记簿，翻到最后一页，看了很久。\n\n“没有。”他说。\n\n你凑过去。林晚的名字还在。她的名字下面，那行字淡得几乎看不见，像被水浸过。\n\n你伸手去摸。纸是干的。\n\n天井角落的纸人，一共七个。你数了三遍，第三遍是六个。\n\n石榴树上的叶子一片也没动。","choices":"妥协离开 / 对抗 / 假装离开再潜入","clues":"M05、F01（名字变淡）","state":"记忆值 -10","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":8,"name":"守夜人","nodes":[{"text":"守夜人在巷口等你。\n\n一共三个人，黑衣，手里各提一盏白灯笼。灯笼都亮着。\n\n“别碰名册。”最前面那个说。\n\n他的声音很平，像在念一句念了很多遍的话。\n\n你问他名册是什么。\n\n他说：“别碰。”\n\n然后他们让开路，站在两边，等你过去。你走过去的时候，灯笼的光没有照到你身上。","choices":"交出一样东西换安全 / 逃跑 / 跟守夜人走","clues":"F17","state":"无","table":[],"kind":"fog","fog":1,"branch":""},{"text":"守夜人在巷口等你。\n\n一共三个人，黑衣，白灯笼。\n\n“你该走了。”最前面那个说。\n\n你说你还有事。\n\n他没有再说话。他往前一步。\n\n你后退，撞到墙上。墙是湿的。\n\n灯笼的光照过来，光里有很多细小的东西在飘，像灰，也像纸屑。\n\n第二个守夜人从右边过来。\n\n你跑。巷子比你来的时候长，跑了很久也没有到头。\n\n身后灯笼的光越来越近。","choices":"交出一样东西换安全 / 逃跑 / 跟守夜人走","clues":"F17","state":"逃跑失败 → **结局 14 失败：被处理**（强制）","table":[],"kind":"fog","fog":2,"branch":""},{"text":"守夜人在巷口等你。\n\n一共三个人。你数了两遍，第二遍是四个。\n\n“你已经在名册上了。”最前面那个说。\n\n你说什么名册。\n\n他转过头，看旁边的人：“他说什么名册。”\n\n旁边的人也转过头：“谁在说话。”\n\n第三个人举起灯笼，照你的脸。光照了很久。他的手在抖。\n\n“……你是谁？”他问。\n\n你张口，想说自己叫什么。\n\n你发现自己想不起来了。\n\n灯笼的光晃了一下。巷子尽头，天已经黑透了。","choices":"交出一样东西换安全 / 逃跑 / 跟守夜人走","clues":"F17（雾 3 版）","state":"记忆值 -15；“跟守夜人走”进入 **结局 23 新守夜人","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":9,"name":"义庄门口","nodes":[{"text":"义庄在镇子北边，一扇黑木门，门楣上挂着白灯笼。\n\n灯笼亮着。\n\n门口地上有一张皱巴巴的纸条，被踩过，边角卷起来。\n\n门锁着。锁很旧，铜绿厚厚一层，钥匙孔里塞着灰。\n\n你把纸条捡起来。上面写着五条规矩，字很急，最后一条只写了一半。","choices":"进 / 不进（不进则回中庭，下次来灯笼可能灭了）","clues":"R03 皱纸条（五条规则）","state":"五条规则正式进入视野","table":[],"kind":"fog","fog":1,"branch":""},{"text":"义庄在镇子北边，黑木门，门楣上挂着白灯笼。\n\n灯笼在晃。今天没有风，海面平得像一块铁。\n\n门口地上有一张纸条。你捡起来，上面五条规矩写得很急，墨还没干透：\n\n一、白灯笼灭了，别进。\n\n二、黄纸别揭。\n\n三、红烛别吹。\n\n四、铜镜别翻。\n\n五、有人叫你的名字，别答应。\n\n纸条背面还有一行小字，写得很轻：“别信墙上的。”\n\n门开着一条缝。缝里是黑的。","choices":"进 / 不进","clues":"R03（含背面小字）","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"义庄在镇子北边，黑木门，门楣上挂着白灯笼。\n\n灯笼亮着。你看了一会儿，它灭了。\n\n一瞬。又亮了。\n\n门口地上有一张纸条。五条规矩，写得很急。\n\n纸条背面有一行字：“别信墙上的。”\n\n门开着。门槛里有脚印，新的，湿的，一直往里。\n\n你数了数，只有进去的，没有出来的。\n\n白灯笼又灭了一下。\n\n这次长了一点。你听见自己的呼吸，比刚才快。","choices":"进 / 不进","clues":"R03","state":"此刻进入 → `entered_dark` 标记（雾 3 时直接“被认”）","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":10,"name":"义庄正厅","nodes":[{"text":"正厅很空。正中停着一口棺材，棺盖上压着几张黄纸。\n\n香案上有香，烧了一半。\n\n棺材下面不是地。你蹲下去看，棺底和地面之间有一道缝，缝里是往下的台阶。\n\n移开棺材，就是入口。\n\n你站起来。香案上的香，比刚才短了一截。","choices":"揭黄纸 / 不揭直接移棺 / 先检查其他棺材","clues":"F13 黄纸名字（可见但不清晰）","state":"无（不移棺不升级）","table":[],"kind":"fog","fog":1,"branch":""},{"text":"正厅很空。正中停着一口棺材，棺盖上压着黄纸。\n\n每张黄纸写着一个名字。最上面一张是林晚。\n\n你数了数，一共二十三张。最下面那张的纸色和其他不一样，更白，更新。\n\n你伸手去挪棺材。棺材很沉，木头发出很长的声音。\n\n声音停了以后，下面还有声音。\n\n很轻，从棺材里，像有人翻身。","choices":"揭黄纸 / 不揭直接移棺 / 先检查其他棺材","clues":"F13","state":"移棺 → **雾 2 → 3","table":[],"kind":"fog","fog":2,"branch":""},{"text":"正厅很空。正中停着一口棺材，棺盖上压着黄纸。\n\n你揭起最上面一张。上面写着你的名字。\n\n你把黄纸放回去。手有点抖。你数了数，一共二十三张，每一张都是你的名字，字迹一张比一张旧。\n\n最下面那张的墨还没干。\n\n你挪棺材。木头很沉，响了一声。\n\n棺材里也响了一声。\n\n你停下来。里面也停下来。\n\n你往后退一步。里面敲了三下。\n\n很慢，很轻，像在问你在不在。","choices":"揭黄纸 / 不揭直接移棺 / 先检查其他棺材","clues":"F13（雾 3 版，全部是主角名字）","state":"雾 2 → 3**；揭黄纸 → `recognized`（锁定同化类结局）；记忆值 -15","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":11,"name":"地宫一层·停灵间","nodes":[{"text":"六口棺材，靠墙排开。\n\n香案上的香还在烧，烟很直。\n\n墙上写着规矩，字迹被烟熏得模糊，只看得清“不要”两个字。\n\n你数了数棺材，六口。数第二遍，还是六口。","choices":"拿铁钥匙 / 不拿 / 看墙文","clues":"R03 对照、I06 铁钥匙（随位置）","state":"碎片，不参与正常流程","table":[],"kind":"fog","fog":1,"branch":""},{"text":"六口棺材，靠墙排开。\n\n香案上的香是新换的，香灰却堆得很高，堆到香炉外面，落了一桌。\n\n棺盖都有缝。你凑近第一口，缝里是白的，纸的颜色。\n\n你用指甲挑开一点。里面是纸人，脸朝上，眼睛的位置画着两个点。\n\n墙上写着规矩，有七条。\n\n纸条上是五条。\n\n你来回看了两遍。多出来的两条，字迹和纸条上的不一样。","choices":"拿铁钥匙 / 不拿 / 看墙文","clues":"I06（随机在某口棺材）、墙文规则","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"六口棺材，靠墙排开。\n\n香案上的香是新换的。香灰堆得很高，高到把香炉埋了一半。\n\n墙上写着规矩，第七条是：“拿钥匙的人，要留下一样东西。”\n\n你翻开第三口棺材的棺盖。\n\n里面躺着一个纸人，手里握着一把铁钥匙。\n\n你伸手去拿。纸人的手抓住了你的手腕。\n\n纸做的手，很凉，力气很大。\n\n你没有动。它也没有动。\n\n过了很久，它松开了。铁钥匙掉在棺底，响了一声。\n\n你的手腕上有一圈白印。你数了数，五道。","choices":"拿铁钥匙 / 不拿 / 看墙文","clues":"I06、墙文第七条","state":"拿钥匙 → 需“留下一样东西”（物品或记忆值 -20）","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":12,"name":"地宫二层·冥婚堂","nodes":[{"text":"红烛，铜镜，纸轿，壁画。\n\n像一间布置好的婚堂，只是没有客人。\n\n铜镜扣在地上。你路过的时候，镜背的花纹好像动了一下。\n\n你回头看，它没有动。","choices":"—（碎片无选择）","clues":"R04、M03、I04、I05（仅作氛围提示）","state":"碎片","table":[],"kind":"fog","fog":1,"branch":""},{"text":"楼梯尽头是一间堂屋。\n\n正中一面铜镜，脸朝下扣在地上，镜背刻着花纹。左右各三根红烛，还在烧。烛泪堆得很高，像烧了几十年没灭。\n\n靠墙一顶纸扎的花轿，轿帘半掀。里面坐着一个纸扎的新娘，红嫁衣，盖头没掀。你能看到盖头下的下巴，白的，纸糊的。\n\n墙上画着壁画。你看了一会儿才看懂——画的是一场婚礼。新娘被人扶着走过一道门，门外是雾。旁边写着一行字：“记住的人，一起嫁。”\n\n香案上放着一把铜钥匙，旁边压着一张纸条：“想见她，先过门。”\n\n纸轿里有什么东西闪了一下。你凑近看——纸新娘的手里，握着一把银钥匙。\n\n铜镜在地板上，安静地扣着。你注意到镜背的刻字：“翻我的人，已经不是我。”","choices":"拿铜钥匙 / 拿银钥匙 / 翻铜镜 / 吹红烛 / 直接去第三层","clues":"I04、I05、R04、M03、F14","state":"无","table":[],"kind":"fog","fog":2,"branch":""},{"text":"楼梯尽头是一间堂屋。\n\n红烛还在烧。六根，左右各三。烛泪堆得很高，很高，高到几乎碰到烛芯。你盯着看了一会儿，发现自己数不清到底烧了多久。烛泪的层数不对，比这间屋子该有的年头多得多。\n\n铜镜扣在地上，镜背朝上。刻着四个字：“翻我者换。”你蹲下去，从镜背和地面的缝隙往里看。黑漆漆的，什么也看不见。但你闻到了一股味道。像铁锈，也像很久没开窗的屋子。\n\n纸轿靠墙放着，轿帘半掀。里面坐着一个纸新娘，红盖头。盖头下的下巴是纸糊的，白的。你盯着看。那个下巴——在动。很慢，像呼吸。纸不会呼吸。\n\n壁画上是一场婚礼。新娘走过一道门，门外是雾。旁边写着：“记住的人，一起嫁。”你往后退了一步，壁画最下面还有一行字，很小，像是后来添上去的：“你是第 87 个。”\n\n香案上有一把铜钥匙，压着纸条：“想见她，先过门。”\n\n纸轿里闪了一下。纸新娘的手里握着一把银钥匙。她的手是纸做的，但握得很紧，指节的褶皱清清楚楚。\n\n你听到身后有声音。很轻，像有人在楼梯上面站着，但没有下来。\n\n红烛的火焰朝你的方向倾斜了一下。\n\n你还没动任何东西。","choices":"拿铜钥匙 / 拿银钥匙 / 翻铜镜 / 吹红烛 / 看纸轿新娘的脸 / 直接去第三层","clues":"I04、I05、R04、M03、F14","state":"吹红烛 → `candle_blown`（记忆上限 -20）；翻铜镜 → `mirror_flipped`；看纸轿脸 → 低记忆值时脸变成林晚/主角","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":13,"name":"地宫三层·名册室","nodes":[{"text":"一间很小的屋子，四面墙都是架子，架子上是册子。\n\n册子很多，从地上堆到房顶。你抽出一本，翻开，是名字。\n\n墙上写满了规矩。最下面有一行小字：\n\n“czy 写到这里，卡住了。”\n\n你不认识 czy。","choices":"—（碎片无选择）","clues":"M04（碎片版）","state":"碎片","table":[],"kind":"fog","fog":1,"branch":""},{"text":"一间很小的屋子，四面墙都是架子。\n\n册子从地上堆到房顶。你抽出一本，翻开，是名字。再抽一本，还是名字。\n\n墙上写满了规矩，一共十九条。你找到第七条：“想救她，就替她拜堂。”\n\n你想起纸条背面那句“别信墙上的”。\n\n最下面一行小字，写得很轻：“czy 写到这里，卡住了。”\n\n墙角有一条缝。缝里塞着一把木钥匙，只露出一个头。\n\n你伸手去够。墙里传来很轻的响动，像有人在另一面翻纸。","choices":"翻名册 / 找木钥匙 / 看墙文 / 跟 czy 对话（条件触发）","clues":"M04、I07 木钥匙、F15","state":"信墙文 → `wall_believed`","table":[],"kind":"fog","fog":2,"branch":""},{"text":"一间很小的屋子，四面墙都是架子。\n\n册子从地上堆到房顶。最底层的册子已经烂了，纸一碰就掉。\n\n你蹲下去翻。最下面一本的第一页，写着三百年前的名字。往后翻，每隔几十年，就有一行：\n\n“来找爱人。”\n\n字迹不一样，笔不一样，写的是同一句话。\n\n最新的一页是你的名字。再往后，是空白。\n\n墙上写满了规矩，一共十九条。第十二条是：“你是第 87 个。”\n\n墙角有一条缝，缝里塞着木钥匙。钥匙旁边刻着一行字：“别信墙上的。”\n\n你伸手去拿钥匙。铜镜里传来声音。\n\n是键盘声。\n\n你回头。铜镜里没有人，只有一张桌子，桌上有一张纸。纸上的字，是你现在的动作。","choices":"翻名册 / 找木钥匙 / 看墙文 / 跟 czy 对话（条件触发）","clues":"M04 完整版（3 周目+）、I07、F15、M06","state":"`wall_believed` 风险最高点","table":[],"kind":"fog","fog":3,"branch":""}]},{"id":14,"name":"灯塔真相段","nodes":[{"text":"铜钥匙转动的时候，锁芯发出一声很轻的响，像有人叹了口气。\n\n门开了。楼梯很窄，转着圈往上。你数着台阶，数到四十七的时候，忘了数到哪儿了。\n\n顶层是一个小房间。窗户被封死了，只有一盏灯，不知道电从哪儿来。灯光是黄的，很暗。\n\n林晚躺在正中间的一张木床上。\n\n你走过去。\n\n她的衣服是你送她的那件，米色的，左边袖口有一块洗不掉的咖啡渍。你认得那件衣服。你洗过很多次，那块渍你一直没洗掉，她说不许洗掉，留着当纪念。\n\n她的脸——模糊的。不是腐烂，不是发白。是模糊。像一张照片被水泡过，五官都在，但边不清晰。你想看清她的眼睛，但眼睛那儿是一团温柔的灰。\n\n她手里攥着一张纸条。你轻轻掰开她的手指。纸是干的，她的手指是凉的，但不是死人的凉——是纸的凉。\n\n纸条上写着：“czy 说你会来。”\n\n你回头看。房间里没有别人。\n\n灯闪了一下。","choices":"叫她的名字 / 握住她的手 / 看那张纸条的背面 / 退出房间","clues":"F10、M02","state":"叫名字 → `name_taken`","table":[],"kind":"branch","fog":3,"branch":"copper"},{"text":"暗门后面是一条窄道，墙上渗着水，水是温的。\n\n走到尽头是一间没有窗的屋子。\n\n屋里点着两根红烛。烛台中间站着一个女人，穿嫁衣，盖头垂到胸前。\n\n你掀开盖头。\n\n是林晚。\n\n这张脸是清晰的。眉毛，眼睛，嘴角那颗小痣，清晰得不像一个躺了三个月的人。\n\n她看着你。眼睛是睁着的。\n\n你想起铜镜上的字：翻我的人，已经不是我。\n\n她没有说话。她的嫁衣下摆是湿的，水一滴一滴落在青砖上。\n\n你数了数，一共十三滴。数完，地上是干的。","choices":"叫她的名字 / 给她穿上嫁衣 / 后退 / 退出房间","clues":"F10 变体、I05","state":"叫名字（高记忆）→ **结局 36 认错**；完成仪式 → **结局 18 嫁衣","table":[],"kind":"branch","fog":3,"branch":"silver"},{"text":"铁钥匙很沉，插进锁孔的时候，锁没有响。\n\n楼梯往下，比往上长。你数到一百二十级，还在往下。\n\n底下是一间圆形的屋子。墙是石头，石头上刻满名字。\n\n最中间有一本册子，摊开着，最后一页是你的名字。\n\n名字后面空着一行。有人用很轻的笔迹在旁边写：“下一个。”\n\n墙上最新的一行字是刻的，很深：\n\n“你是第 87 个。”\n\n你抬头。屋顶很高，看不到顶。\n\n上面传来脚步声。很慢，一圈一圈，像有人在绕着楼梯走。","choices":"继续往下 / 刻名字 / 找第 88 个 / 退出","clues":"F11、F12、F15","state":"继续往下 → **结局 29**；刻名字 → **结局 31 / 43","table":[],"kind":"branch","fog":3,"branch":"iron"},{"text":"木钥匙插不进任何锁。\n\n你握着它站在名册室中央。墙上的字开始动。\n\n字一行一行往后移，像有人在删。\n\n空出来的地方，出现了一面铜镜。\n\n镜子里是一张桌子。桌上有一台电脑，屏幕亮着。屏幕上是这个房间。是你。\n\n光标在闪。\n\n你听见键盘声。很快，停一下，又很快。\n\n你抬手。屏幕里的你也抬手，比你慢半拍。\n\n你放下手。屏幕里的手没有放下。","choices":"敲镜子 / 说话 / 等她写完 / 退出","clues":"M02、M06","state":"进入 **czy 对话**（附录）","table":[],"kind":"branch","fog":3,"branch":"wood"},{"text":"你又看了一遍她的脸。\n\n这一次，脸是清楚的。\n\n没有模糊，没有灰。就是一具尸体。皮肤发青，嘴唇干裂，头发里有一根白头发。\n\n你数了数，一根。\n\n你想起这三个月里自己说过的话。她一直在雾里，一直在等你，一直有话要说。\n\n都是你说的。\n\n房间里很安静。灯没有闪。\n\n你听到键盘声。有人在写你现在的表情。","choices":"","clues":"","state":"`eggSeen = true`；不改变任何结局","table":[],"kind":"egg","fog":3,"branch":""}]},{"id":15,"name":"高潮","nodes":[{"text":"你站在名册室中间。手里有几把钥匙，你自己也数不清了。\n\n地上的册子摊开着。最后一页是你的名字，名字后面空着一行。\n\n你可以写。也可以不写。\n\n楼道里有风。风里有人走路的声音，不急，一圈一圈，往上。\n\n红烛的光从门缝里透进来，很细的一条。","choices":"","clues":"","state":"","table":[],"kind":"common","fog":3,"branch":""},{"text":"","choices":"","clues":"","state":"","table":[["带她离开","9 半张脸 / 10 代价 / 28 假结局（按记忆值与线索完整度分）"],["独自离开","13 被留下的人 / 17 半真"],["带她去海边","7 海葬 / 35 海雾吞人（低记忆值）"],["烧名册","12 名册之火（线索高）"],["用记忆换她自由","11 交易"],["拍照发给外界","16 真相与逃离（线索高）"],["留下守名册","5 守夜访客"],["铭刻她的名字","26 真结局：记住（全 35 线索）"]],"kind":"branch","fog":3,"branch":"copper"},{"text":"","choices":"","clues":"","state":"","table":[["完成仪式 / 给她穿嫁衣","18 嫁衣"],["翻铜镜后离开","19 换位（`mirror_flipped`）"],["看纸轿的脸","32 纸新娘（低记忆值）"],["掀开轿帘","33 空棺（铜 + 银）"],["两扇门都开","20 两个林晚（铜 + 银）"],["只看纸轿、不进暗门","8 纸人回家"]],"kind":"branch","fog":3,"branch":"silver"},{"text":"","choices":"","clues":"","state":"","table":[["继续往下","29 灯塔之下"],["刻自己的名字","31 第八十七个（全线索 + 高记忆）/ 43 第八十八个"],["翻最底层名册","34 守夜人的名册"],["看名册最后一页","22 你就是林晚（`mirror_flipped` + 低记忆值）"],["离开","37 无人生还（四钥匙 + 不跟 czy 对话）"],["等待（三次以上）","30 最后一条消息"],["上船","25 循环（低记忆值）"]],"kind":"branch","fog":3,"branch":"iron"},{"text":"","choices":"","clues":"","state":"","table":[["让我出去","39 作者"],["别写了","40 断更"],["你是谁","41 说书人"],["把结局给我","42 合上这本书（四钥匙）"],["你哭了吗","45 czy 的眼泪（全结局 + 木钥匙）"]],"kind":"branch","fog":3,"branch":"wood"},{"text":"","choices":"","clues":"","state":"","table":[["记忆值归零","21 忘记名字"],["中恐被守夜人抓住","14 失败：被处理"],["地宫停留超时 / 多次进灯塔","15 失败：同化"],["跟守夜人走 / 拜堂","23 新守夜人"],["留下陪尸体（中等记忆值）","24 永恒对话"],["全线索 + 记忆值 ≥60 + 讲故事","38 微光"],["48/48 后重开 + 铜钥匙 + 高记忆","44 普通尸体（灯塔自动）"],["czy 模式写规则 / 合上 / 保存","46 / 47 / 48"]],"kind":"other","fog":0,"branch":""}]}],"endings":[{"id":1,"name":"雾中回信","group":"雾浓度 1（微恐层）","fog":1,"pre":"铜钥匙；线索完整度中等；离开雾港","choice":"在渡口选择“上船”","intro":"一年后收到一张字条，字迹模糊但能认出是林晚的。没有地址，没有解释，但你知道她还“在”。","glitch":["结局 1：■■■","简介：░░ 字条 ▒░ 模糊 ░▒ 在 ░░"]},{"id":2,"name":"空屋","group":"雾浓度 1（微恐层）","fog":1,"pre":"铜钥匙；不带任何物品离开","choice":"在渡口选择“上船”且背包为空","intro":"回到家，林晚的东西已经全没了。你接受了，开始新生活。某个早上你想不起她的声音，但不再难过。","glitch":["结局 2：■■■","简介：▒▒ 东西 ░░ 没 ▒░ 新 ░▒"]},{"id":3,"name":"旧照片","group":"雾浓度 1（微恐层）","fog":1,"pre":"铜钥匙；带走照片；离开","choice":"在渡口选择“上船”","intro":"你把照片放在钱包里。多年后照片上的人已经模糊，但你记得“曾经有个人很重要”。","glitch":["结局 3：■■■","简介：░░ 照片 ▒░ 模糊 ░▒ 记得 ░░"]},{"id":4,"name":"码头的影子","group":"雾浓度 1（微恐层）","fog":1,"pre":"铜钥匙；离开时选择“回头看一眼”","choice":"渡口上船后选择“回头”","intro":"船上，你看到码头有个像林晚的身影。你选择不回头。雾散了，码头空无一人。","glitch":["结局 4：■■■","简介：▒░ 码头 ░▒ 身影 ▒░ 不回头 ░"]},{"id":5,"name":"守夜访客","group":"雾浓度 1（微恐层）","fog":1,"pre":"铜钥匙；选择留下来帮镇民记录名册","choice":"高潮选择“留下”","intro":"你成了灯塔的访客，每天去看一眼林晚的名字。名字还在，墨迹没再变淡。你不知道这算不算救了她。","glitch":["结局 5：■■■","简介：░░ 名册 ▒░ 每天 ░▒ 算不算 ░"]},{"id":6,"name":"母亲的信","group":"雾浓度 1（微恐层）","fog":1,"pre":"听录音带；选择“尊重林晚的选择”离开","choice":"渡口选择“上船”","intro":"你听完林晚母亲的录音，理解了林晚为什么回来。你离开雾港，把这件事留在心里。","glitch":["结局 6：■■■","简介：▒▒ 录音 ░░ 理解 ▒░ 留在心里 ░"]},{"id":7,"name":"海葬","group":"雾浓度 1（微恐层）","fog":1,"pre":"铜钥匙；选择“带她去看海”","choice":"高潮选择“带尸体去海边”","intro":"你把尸体带到海边。潮水涌上来，带走了一切。你站在岸上，分不清脸上是海水还是别的。","glitch":["结局 7：■■■","简介：░░ 海边 ▒░ 潮水 ░▒ 带走 ░░"]},{"id":8,"name":"纸人回家","group":"雾浓度 1（微恐层）","fog":1,"pre":"银钥匙；但不进暗门，只拿走纸轿新娘","choice":"冥婚堂选择“拿走纸人”后离开","intro":"你把纸人带回家，每天跟它说话。它的脸越来越像林晚，但你分不清是自己记错了，还是它真的在变。","glitch":["结局 8：■■■","简介：▒░ 纸人 ░▒ 说话 ▒░ 变 ░░"]},{"id":9,"name":"半张脸","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；见到尸体；线索中等","choice":"高潮选择“带她离开”","intro":"你救出了她，但她只记得你的脸，不记得你们怎么认识的。两人重新开始，但你知道少了什么。","glitch":["结局 9：■■■","简介：░░ 脸 ▒░ 认识 ░▒ 少了 ░░"]},{"id":10,"name":"代价","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；带尸体离开；记忆值低于 50","choice":"高潮选择“带她离开”","intro":"林晚完整离开雾港。你记得“要爱她”，但忘了她的名字。她每天告诉你一次。","glitch":["结局 10：■■■","简介：▒▒ 名字 ░░ 每天 ▒░ 一次 ░"]},{"id":11,"name":"交易","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；选择“用记忆换她自由”","choice":"高潮选择“用自己的记忆换”","intro":"林晚被安葬，你留下来做了守夜人。名册上她的名字消失了，你的名字出现了。","glitch":["结局 11：■■■","简介：░░ 守夜 ▒░ 名字 ░▒ 换 ░░"]},{"id":12,"name":"名册之火","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；烧名册；线索完整度高","choice":"高潮选择“烧名册”","intro":"潮忘失控，整个镇子陷入混乱。你趁乱带走尸体，但镇民在后面看着你，像在看一个死人。","glitch":["结局 12：■■■","简介：▒▒ 名册 ░░ 烧 ▒░ 代价 ░░"]},{"id":13,"name":"被留下的人","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；选择独自离开","choice":"高潮选择“独自离开”","intro":"你在船上听到林晚的声音，回头只有雾。你活下来了，但余生都在想“如果当时回头”。","glitch":["结局 13：■■■","简介：░░ 声音 ▒░ 回头 ░▒ 余生 ░░"]},{"id":14,"name":"失败：被处理","group":"雾浓度 2（中恐层）","fog":2,"pre":"中恐段被守夜人抓住","choice":"无（强制）","intro":"你在雾中醒来，不记得自己是谁，也不记得为什么在这里。旁边有人叫你“新来的”。","glitch":["结局 14：■■■","简介：▒░ 醒来 ░▒ 不记得 ▒░ 新来的 ░"]},{"id":15,"name":"失败：同化","group":"雾浓度 2（中恐层）","fog":2,"pre":"在地宫待太久 / 多次进入灯塔","choice":"无（强制）","intro":"你成了镇民的一员，帮忙记录名册。下一个来找爱人的人会问你“你找谁来着？”","glitch":["结局 15：■■■","简介：░░ 镇民 ▒░ 记录 ░▒ 下一个 ░░"]},{"id":16,"name":"真相与逃离","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；揭露镇民秘密；线索高","choice":"高潮选择“拍照发给外界”","intro":"你把名册拍下来发给外界，带着部分记忆的林晚逃离。镇子在身后消失，但照片里她的脸还在变淡。","glitch":["结局 16：■■■","简介：▒▒ 拍照 ░░ 逃离 ▒░ 变淡 ░"]},{"id":17,"name":"半真","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙；发现林晚是自愿的；独自离开","choice":"高潮选择“独自离开”","intro":"林晚为了保护你才接受潮忘。你离开，她在雾中目送你。你后来才想明白她为什么笑。","glitch":["结局 17：■■■","简介：░░ 自愿 ▒░ 目送 ░▒ 笑 ░░"]},{"id":18,"name":"嫁衣","group":"雾浓度 2（中恐层）","fog":2,"pre":"银钥匙；进暗门；选择“给她穿上嫁衣”","choice":"暗门场景选择“完成仪式”","intro":"你完成冥婚仪式，林晚被“嫁”给雾。你被释放，但每年这一天你都会回到雾港，站在海边。","glitch":["结局 18：■■■","简介：▒░ 仪式 ░▒ 释放 ▒░ 海边 ░"]},{"id":19,"name":"换位","group":"雾浓度 2（中恐层）","fog":2,"pre":"银钥匙；翻铜镜；但不看纸轿脸","choice":"冥婚堂选择“翻铜镜”后离开","intro":"镜中人和你换了位。你留在镜子里，镜中人替你出去。你从镜子里看着他过你的生活，慢慢忘掉你的名字。","glitch":["结局 19：■■■","简介：░░ 镜子 ▒░ 换 ░▒ 忘掉 ░░"]},{"id":20,"name":"两个林晚","group":"雾浓度 2（中恐层）","fog":2,"pre":"铜钥匙 + 银钥匙同时持有","choice":"灯塔选择“两扇门都开”","intro":"你看到两具尸体，一具在正门后，一具在暗门后。你不知道该信哪个是真正的她。也许两个都是，也许都不是。","glitch":["结局 20：■■■","简介：▒▒ 两具 ░░ 信 ▒░ 都不是 ░"]},{"id":21,"name":"忘记名字","group":"雾浓度 3（重恐层）","fog":3,"pre":"记忆值归零","choice":"无（强制）","intro":"你站在灯塔顶层，面对一个陌生人。你知道自己来找很重要的人，但想不起名字。陌生人说“你也是来找人的？”。","glitch":["结局 21：■■■","简介：▓▒ 名字 ░▒ 想不起 ░▓ 陌生人 ▒"]},{"id":22,"name":"你就是林晚","group":"雾浓度 3（重恐层）","fog":3,"pre":"翻铜镜 + 低记忆值 + 铁钥匙","choice":"铁钥匙门后选择“看名册最后一页”","intro":"名册上是你自己的名字。你不是来找林晚的。林晚是你给自己编的故事，好让自己有理由忘记自己是谁。","glitch":["结局 22：■■■","简介：▓▒ 铜镜 ░▒ 换 ░▓ 名字 ▒"]},{"id":23,"name":"新守夜人","group":"雾浓度 3（重恐层）","fog":3,"pre":"跟守夜人走 / 拜堂","choice":"守夜人场景选择“跟走”或高潮选择“拜堂”","intro":"你成为新的守夜人。坐在灯塔地下室，记录下一个外来者的名字。那个人来找他的爱人。","glitch":["结局 23：■■■","简介：░░ 守夜 ▒░ 记录 ░▒ 下一个 ░░"]},{"id":24,"name":"永恒对话","group":"雾浓度 3（重恐层）","fog":3,"pre":"留下陪尸体；记忆值中等","choice":"高潮选择“留下陪她”","intro":"你留在灯塔顶层陪林晚。每天你都会忘记前一天的事，重新开始对话。她也是。两人永远在第一次对话。","glitch":["结局 24：■■■","简介：▒▒ 每天 ░░ 忘记 ▒░ 第一次 ░"]},{"id":25,"name":"循环","group":"雾浓度 3（重恐层）","fog":3,"pre":"逃离 + 记忆值低 + 铁钥匙","choice":"渡口选择“上船”","intro":"你回到家，发现一切重来——你又收到了那封信。你不知道自己已经循环了多少次。","glitch":["结局 25：■■■","简介：░░ 重来 ▒░ 信 ░▒ 多少次 ░░"]},{"id":26,"name":"真结局：记住","group":"雾浓度 3（重恐层）","fog":3,"pre":"全线索 + 选择“用全部记忆铭刻她的名字”","choice":"高潮选择“铭刻名字”","intro":"你在名册上用自己的记忆写下林晚的名字。她被释放，你变成空壳。名册上她的名字永远清晰。","glitch":["结局 26：■■■","简介：▓▒ 铭刻 ░▒ 空壳 ░▓ 清晰 ▒"]},{"id":27,"name":"真结局：一起消失","group":"雾浓度 3（重恐层）","fog":3,"pre":"选择“握住她的手一起接受潮忘”","choice":"高潮选择“一起消失”","intro":"两人一起被潮忘带走，从世界上消失。但至少在一起。镇民后来发现名册上两行字同时消失了。","glitch":["结局 27：■■■","简介：░░ 一起 ▒░ 消失 ░▒ 两行 ░░"]},{"id":28,"name":"假结局","group":"雾浓度 3（重恐层）","fog":3,"pre":"带“林晚”回家；线索完整度低","choice":"高潮选择“带她离开”","intro":"你以为救出了林晚。某天你发现她不记得你们第一次约会的地方。真正的林晚早已消失。你不敢问。","glitch":["结局 28：■■■","简介：▒▒ 不记得 ░░ 真正 ▒░ 不敢问 ░"]},{"id":29,"name":"灯塔之下","group":"雾浓度 3（重恐层）","fog":3,"pre":"铁钥匙；地宫继续往下走","choice":"铁钥匙门后选择“继续往下”","intro":"你发现地下室不止一层。下面还有更古老的名册。你意识到潮忘是循环的，自己只是最新的一环。","glitch":["结局 29：■■■","简介：░░ 更古老 ▒░ 循环 ░▒ 一环 ░░"]},{"id":30,"name":"最后一条消息","group":"雾浓度 3（重恐层）","fog":3,"pre":"多次犹豫；铁钥匙","choice":"高潮前选择“等待”三次以上","intro":"你的手机收到林晚的消息：“别来找我。”消息时间是三个月前。你意识到自己已经在雾港循环了无数次。","glitch":["结局 30：■■■","简介：▒░ 消息 ░▒ 三个月 ▒░ 无数次 ░"]},{"id":31,"name":"第八十七个","group":"雾浓度 3（重恐层）","fog":3,"pre":"铁钥匙 + 全线索 + 高记忆值","choice":"铁钥匙门后选择“看墙上的字”","intro":"墙上写着“你是第 87 个”。你决定做第 88 个来找的人。你在墙上刻下自己的名字，给下一个人留规则。","glitch":["结局 31：■■■","简介：░░ 第 87 ▒░ 刻 ░▒ 留下 ░░"]},{"id":32,"name":"纸新娘","group":"雾浓度 3（重恐层）","fog":3,"pre":"银钥匙 + 看纸轿脸 + 低记忆值","choice":"冥婚堂选择“看新娘的脸”","intro":"你成为地宫纸轿里的新“新娘”。林晚被释放，但永远不知道是谁换了她。","glitch":["结局 32：■■■","简介：▓▒ 纸轿 ░▒ 换 ░▓ 不知道 ▒"]},{"id":33,"name":"空棺","group":"雾浓度 3（重恐层）","fog":3,"pre":"铜钥匙 + 银钥匙；选择“打开纸轿”","choice":"冥婚堂选择“掀开轿帘”","intro":"纸轿里是空的。你意识到新娘早就被换走了——换成了你。","glitch":["结局 33：■■■","简介：░░ 纸轿 ▒░ 空的 ░▒ 换成你 ░░"]},{"id":34,"name":"守夜人的名册","group":"雾浓度 3（重恐层）","fog":3,"pre":"铁钥匙；选择“翻开最底层名册”","choice":"铁钥匙门后选择“翻最底层”","intro":"你发现守夜人自己也在名册上。他们只是还没被忘完的“前任主角”。","glitch":["结局 34：■■■","简介：▒▒ 守夜 ░░ 名册 ▒░ 前任 ░"]},{"id":35,"name":"海雾吞人","group":"雾浓度 3（重恐层）","fog":3,"pre":"铜钥匙；带尸体去海边；低记忆值","choice":"高潮选择“带她去海边”","intro":"海雾涌上来，你和尸体一起消失。镇民说“又走了一个”。","glitch":["结局 35：■■■","简介：░░ 海雾 ▒░ 消失 ░▒ 又走了一个 ░"]},{"id":36,"name":"认错","group":"雾浓度 3（重恐层）","fog":3,"pre":"银钥匙 + 高记忆值；选择“叫她的名字”","choice":"暗门场景选择“叫名字”","intro":"暗门后的林晚睁开眼睛——她不是林晚。是上一个来找人的主角，被仪式改造成了“林晚”。","glitch":["结局 36：■■■","简介：▒░ 眼睛 ░▒ 不是 ▒░ 改造 ░"]},{"id":37,"name":"无人生还","group":"雾浓度 3（重恐层）","fog":3,"pre":"四把钥匙全拿；不跟 czy 对话直接离开","choice":"高潮选择“离开”","intro":"所有门都开了，所有真相都看到了，但你带不走任何东西。你一个人离开雾港，身后传来四道关门声。","glitch":["结局 37：■■■","简介：▓▒ 四道门 ░▒ 带不走 ░▓ 关门 ▒"]},{"id":38,"name":"微光","group":"元叙事 / 隐藏","fog":0,"pre":"全线索 + 记忆值 ≥60 + 特定组合","choice":"高潮选择“把故事讲给镇外的人”","intro":"你把林晚的故事讲给镇外的人听。记忆分散在很多人心里，潮忘带不走。这是唯一一个她“还在”的结局。","glitch":["结局 38：■■■","简介：░░ 故事 ▒░ 分散 ░▒ 还在 ░░"]},{"id":39,"name":"作者","group":"元叙事 / 隐藏","fog":0,"pre":"木钥匙 + 跟 czy 对话选“让我出去”","choice":"czy 对话选择“让我出去”","intro":"czy 合上文档。你站在一片空白里，听到键盘声停了。你不知道自己是出去了，还是被删了。","glitch":["结局 39：■■■","简介：▒▒ 合上 ░░ 空白 ▒░ 删了 ░"]},{"id":40,"name":"断更","group":"元叙事 / 隐藏","fog":0,"pre":"木钥匙 + 跟 czy 对话选“别写了”","choice":"czy 对话选择“别写了”","intro":"czy 停笔。雾港开始崩塌，所有角色停在原地。你最后看到的是 czy 的桌面壁纸——一张林晚的照片。故事没有结局，因为作者不写了。","glitch":["结局 40：■■■","简介：░░ 别写 ▒░ 停 ░▒ 文档 ░░"]},{"id":41,"name":"说书人","group":"元叙事 / 隐藏","fog":0,"pre":"三个浓度各达成一个结局 + 木钥匙","choice":"czy 对话选择“你是谁”","intro":"你发现雾港是一个被反复讲述的故事。你是说书人笔下的人。但说书人也在别人的故事里。","glitch":["结局 41：■■■","简介：▒░ 讲述 ░▒ 说书人 ▒░ 故事 ░"]},{"id":42,"name":"合上这本书","group":"元叙事 / 隐藏","fog":0,"pre":"四把钥匙全拿 + 跟 czy 对话选“把结局给我”","choice":"czy 对话选择“把结局给我”","intro":"czy 把文档权限交给你。你自己写结局，但写下的每一句话都会变成新的雾港。你成了新的作者。","glitch":["结局 42：■■■","简介：░░ 权限 ▒░ 写 ░▒ 新的雾港 ░░"]},{"id":43,"name":"第八十八个","group":"元叙事 / 隐藏","fog":0,"pre":"铁钥匙 + 看完第 87 个的留言 + 选择“留下”","choice":"铁钥匙门后选择“留下刻名字”","intro":"你在地宫墙上刻下自己的名字，给第 89 个来找人的人留规则。你成了名册的一部分。","glitch":["结局 43：■■■","简介：▒▒ 刻 ░░ 第 89 ▒░ 一部分 ░"]},{"id":44,"name":"普通尸体","group":"元叙事 / 隐藏","fog":0,"pre":"全结局解锁后重新开始 + 铜钥匙 + 高记忆值","choice":"灯塔顶层自动触发","intro":"你终于看清：她没有模糊，只是一具普通尸体。潮忘从未发生，是你自己不肯接受。","glitch":["结局 44：■■■","简介：░░ 看清 ▒░ 普通 ░▒ 不肯接受 ░░"]},{"id":45,"name":"czy 的眼泪","group":"元叙事 / 隐藏","fog":0,"pre":"全结局解锁 + 木钥匙 + 特定对话","choice":"czy 对话选择“你哭了吗”","intro":"czy 沉默很久，说：“我写这个故事，是因为我也在找一个人。”铜镜里，桌上放着一张空白的照片。","glitch":["结局 45：■■■","简介：▒░ 沉默 ░▒ 找一个人 ▒░ 空白 ░"]},{"id":46,"name":"新规则","group":"czy 模式","fog":0,"pre":"czy 模式；写下一句规则并进入下一周目","choice":"在空白墙前输入规则","intro":"你写的规则生效了。地宫墙上多了一行字，笔迹是你的。","glitch":["结局 46：■■■","简介：░░ 规则 ▒░ 你写 ░▒ 生效 ░░"]},{"id":47,"name":"空白文档","group":"czy 模式","fog":0,"pre":"czy 模式；选择“合上这本书”","choice":"菜单选择“合上”","intro":"czy 合上文档。雾港还在，但不再有人讲述它。","glitch":["结局 47：■■■","简介：▒▒ 合上 ░░ 不再 ▒░ 讲述 ░"]},{"id":48,"name":"最后一页","group":"czy 模式","fog":0,"pre":"czy 模式 + 全钥匙 + 全线索；走完完整流程","choice":"写完整页后选择“保存”","intro":"你写完了最后一页。文档自动保存。你不知道下次打开时，主角还会不会记得你。","glitch":["结局 48：■■■","简介：▓▒ 最后一页 ░▒ 保存 ░▓ 记得 ▒"]}],"clues":[{"id":"F01","name":"登记簿","type":"事实","get":"固定，中庭场景","detail":"林晚名字旁有主角名字，日期是今天。雾浓度 3 才明显","effect":"22 你就是林晚 / 25 循环 / 28 假结局"},{"id":"F02","name":"老周的账本","type":"事实","get":"随机（旅馆/老家二选一）","detail":"记录住客“住了几天”，有人住了几十年。时间异常证据","effect":"15 失败：同化 / 25 循环"},{"id":"F03","name":"未寄出的信","type":"事实","get":"固定，旅馆房间","detail":"林晚：“别来，来了就走不了。”她知道危险","effect":"17 半真 / 6 母亲的信"},{"id":"F04","name":"床头旧刻字","type":"事实","get":"固定，旅馆房间","detail":"“我也来找人。我忘了她叫什么。”前周目主角痕迹","effect":"31 第八十七个 / 25 循环"},{"id":"F05","name":"床头新刻字","type":"事实","get":"**二周目+**，旅馆房间","detail":"“这次我记得。她叫林晚。下次可能就不记得了。”","effect":"31 第八十七个 / 30 最后一条消息"},{"id":"R01","name":"门后告示","type":"规则","get":"随机（旅馆/义庄二选一）","detail":"“入夜后别应门。”镇民口述规则的文字版","effect":"规则判断辅助（叫名字线）"},{"id":"F06","name":"林晚日记","type":"事实","get":"固定，老家","detail":"调查母亲失踪的过程；提到“妈让我别下地宫”","effect":"主线，影响 9/10/16/17"},{"id":"F07","name":"母亲遗物照片","type":"事实","get":"随机（老家/灯塔二选一）","detail":"林晚母亲站在地宫门口。母亲也经历过潮忘","effect":"6 母亲的信 / 17 半真"},{"id":"F08","name":"全家福（划脸）","type":"事实","get":"固定，老家","detail":"父亲的脸被剪掉，背面“别回来”。父亲是潮忘受害者","effect":"17 半真 / 16 真相与逃离"},{"id":"R02","name":"录音带（内容）","type":"规则","get":"固定，老家","detail":"母亲声音：“记住，别下地宫。”规则前置暗示","effect":"地宫进入判断 / 6 母亲的信"},{"id":"I01","name":"照片（可携带）","type":"物品","get":"老家选择“拿走照片”","detail":"全家福实体。高潮可携带","effect":"3 旧照片 / 20 两个林晚 / 26 记住"},{"id":"I02","name":"录音带（可携带）","type":"物品","get":"老家选择“拿走录音带”","detail":"母亲录音实体。高潮可携带","effect":"6 母亲的信"},{"id":"M01","name":"纸人（脸像林晚）","type":"元叙事","get":"固定，老家（升级点触发）","detail":"纸人脸从空白变成林晚小时候→现在的脸。雾 1→2 升级","effect":"8 纸人回家 / 32 纸新娘 / 33 空棺"},{"id":"F09","name":"灯塔日志","type":"事实","get":"固定，灯塔外围","detail":"记录每次潮忘日期和名字，最近一条是林晚","effect":"25 循环 / 31 第八十七个"},{"id":"I03","name":"铜锁（门锁信息）","type":"物品","get":"固定，灯塔外围","detail":"旧钥匙孔，新锁。提示钥匙在地宫","effect":"钥匙线入口"},{"id":"F10","name":"林晚尸体","type":"事实","get":"固定，铜钥匙正门","detail":"核心冲击。脸模糊，衣服是主角送的。全收集后看清是普通尸体","effect":"几乎所有重恐结局；44 普通尸体"},{"id":"M02","name":"尸体手里纸条","type":"元叙事","get":"固定，铜钥匙正门","detail":"“czy 说你会来。”元叙事首次暗示","effect":"39 作者 / 40 断更 / 45 czy 的眼泪"},{"id":"F11","name":"灯塔地下名册","type":"事实","get":"铁钥匙门后","detail":"更古老的名册，守夜人的名字也在上面","effect":"29 灯塔之下 / 34 守夜人的名册"},{"id":"F12","name":"墙上“第 87 个”","type":"事实","get":"铁钥匙门后","detail":"墙上新写的字：“你是第 87 个。”","effect":"31 第八十七个 / 43 第八十八个"},{"id":"R03","name":"皱纸条","type":"规则","get":"固定，义庄门口","detail":"五条核心规则。背面小字“别信墙上的”","effect":"全部规则判断的基准"},{"id":"F13","name":"黄纸名字","type":"事实","get":"固定，义庄正厅","detail":"每张黄纸写一个名字，最上面是林晚；雾 3 时是主角","effect":"15 同化 / 32 纸新娘（“被认”状态）"},{"id":"F14","name":"冥婚堂壁画","type":"事实","get":"固定，冥婚堂","detail":"潮忘仪式全过程；“记住的人，一起嫁”","effect":"核心真相，影响 18/22/26/27"},{"id":"R04","name":"铜镜刻字","type":"规则","get":"固定，冥婚堂","detail":"“翻我的人，已经不是我。”换位警告","effect":"19 换位 / 22 你就是林晚"},{"id":"M03","name":"纸轿新娘的脸","type":"元叙事","get":"固定，冥婚堂（需主动看）","detail":"空白→低记忆值时变成林晚→再低变成主角","effect":"32 纸新娘 / 33 空棺 / 36 认错"},{"id":"M04","name":"名册室墙文","type":"元叙事","get":"固定，名册室；完整版需**三周目+**","detail":"大量规则+陷阱；“czy 写到这里，卡住了”","effect":"23 新守夜人 / 39/40/41/42/45"},{"id":"I04","name":"铜钥匙","type":"物品","get":"固定，冥婚堂香案","detail":"开灯塔正门→林晚尸体","effect":"1~7、9~17、26~28 等基础线"},{"id":"I05","name":"银钥匙","type":"物品","get":"固定，纸轿新娘手里（需拿，可能触发看脸）","detail":"开灯塔暗门→嫁衣林晚","effect":"8、18、19、20、32、33、36"},{"id":"I06","name":"铁钥匙","type":"物品","get":"**随机**，停灵间某口棺材（每周目位置变）","detail":"开灯塔地下→古老名册","effect":"22、25、29~31、34、37、43"},{"id":"I07","name":"木钥匙","type":"物品","get":"固定，名册室墙缝（需违反“别信墙文”仔细搜）","detail":"开 czy 文档→元叙事线","effect":"38~42、45"},{"id":"F15","name":"旧名册（底层）","type":"事实","get":"铁钥匙门后选择“翻最底层”","detail":"几百年名字，最后一页是主角。循环证据","effect":"29 灯塔之下 / 22 你就是林晚 / 31 第八十七个"},{"id":"F16","name":"老周口述","type":"事实","get":"固定，渡口/中庭（随雾浓度变）","detail":"雾 1“别担心”；雾 2“别超过三天”；雾 3“你找谁来着？”","effect":"15 同化 / 25 循环（氛围+信息）"},{"id":"F17","name":"守夜人的话","type":"事实","get":"固定，守夜人场景","detail":"“你已经在名册上了”/“跟我们一起记名册吧”","effect":"23 新守夜人 / 11 交易"},{"id":"R05","name":"白灯笼规矩","type":"规则","get":"随机（镇民口述/义庄门口二选一）","detail":"“白灯笼灭了，就别进义庄。”","effect":"规则判断（`entered_dark` 标记）"},{"id":"M05","name":"纸人摆法","type":"元叙事","get":"固定，中庭转折","detail":"镇民家纸人摆成“一家人”，多一个空位","effect":"15 同化（暗示下一个被潮忘的人）"},{"id":"M06","name":"czy 批注","type":"元叙事","get":"**三周目+**，散落各场景随机出现","detail":"墙缝、纸条背面、名册页脚的作者痕迹","effect":"39~42、45 元叙事线解锁辅助"}],"czyText":"你站在名册室的墙前。木钥匙在手里，凉的。\n\n墙上那行字还在：“czy 写到这里，卡住了。”\n\n“你来了。”\n\n声音没有方向。像从墙里，从名册里，从你脑子里同时响起来。\n\n“你每次都来。”\n\n你张嘴，不知道该说什么。\n\n“你可以问三个问题。”声音说，“和前十七次一样。”\n\n沉默了很长时间。\n\n“……好。”\n\n声音很轻，像是放下了一支笔。\n\n墙上的字开始褪。名册的字开始褪。你手里的木钥匙也褪了，变成一小片空白。\n\n地宫在你身后塌了，但没有声音。红烛灭了。纸轿瘪了。铜镜裂了。所有东西都在变成白纸。\n\n你站在一片空白里。\n\n很远的地方传来键盘声。停了。\n\n你低头，看到自己也在变白。从脚开始，往上。\n\n最后一眼，你看到一面铜镜立在空白里。镜中不是地宫，是一张桌子。桌上一张照片，背面朝上。照片旁边有一只杯子，杯壁上印着林晚最喜欢的那个卡通猫。\n\n键盘声没有再响。\n\n故事没有结局，因为作者不写了。\n\n**——结局 40：断更**"};
+
+/* ================= 常量 ================= */
+var SAVE_KEY='wugang.save.v1',PASS_DEFAULT='wugang';
+var ABOUT_TEXT='《雾港》是一个虚构的故事。\n\n镇子不存在，纸人不存在，规矩也不存在。\n\n里面的人都是写的。如果你认识一个叫林晚的人，那不是她。\n\n本作含心理恐怖与死亡描写。玩不玩，你自己判断。\n\n没有广告，没有付费。存档只存在你自己的浏览器里。\n\n如果你在雾里看见了什么，那是你带进来的。';
+var DOUBTS=['你数过这几行字了吗。','刚才那句，是不是少了一个字。','纸条背面还有字。你翻过了吗。','别回头。主页一直在这。','你确定这是第一遍吗。','她姓什么来着。','雾在变浓。','第 87 个。','有人在写你现在的表情。','键盘声停了一下。'];
+var FLAGS=['entered_dark','recognized','candle_blown','mirror_flipped','name_taken','wall_believed'];
+var KEYCN={copper:'铜',silver:'银',iron:'铁',wood:'木'};
+var GROUPS=['雾浓度 1','雾浓度 2','雾浓度 3','元叙事 / 隐藏','czy 模式'];
+var GRSUM=['微恐全部解锁。你发现了吗？微恐里没有人真正死去。','中恐全部解锁。每一个幸存结局，都有人付出了代价。','重恐全部解锁。czy 在文档末尾写了一句：对不起。','元叙事全部解锁。你开始怀疑，这些结局是不是也是被写好的。','czy 模式全部解锁。现在，故事是你的了。'];
+var COMMANDS=[
+ ['fog','当前雾浓度（只有这里显示数字）'],['mind','记忆值'],['loop','周目'],['where','当前场景'],['seed','本局种子'],
+ ['clues','已获线索'],['keys','持有钥匙'],['rules','五条规则与标记'],['ends','解锁进度'],['state','完整状态'],
+ ['go &lt;n&gt;','跳到场景 1~15'],['go lighthouse','灯塔真相段'],['go end &lt;n&gt;','播放结局，不解锁'],
+ ['home','回主页'],['back','撤销上一步'],
+ ['fog &lt;1|2|3&gt;','强制浓度'],['mind &lt;0~100&gt;','设记忆值'],['give clue &lt;F01&gt;','发放线索'],
+ ['give key &lt;copper|silver|iron|wood&gt;','发放钥匙'],['clear rule &lt;标记&gt;','清除违规标记'],['clear all','恢复干净会话态'],
+ ['unlock end &lt;n&gt;','调试解锁一格'],['unlock all','48 格全亮（不触发全收集）'],['lock end &lt;n&gt;','重锁一格'],
+ ['lock all','全锁'],['commit','提交调试态到存档'],
+ ['speed &lt;0~200&gt;','每字毫秒，0 为瞬时'],['sound on|off','打字音效'],['bgm on|off','背景音乐'],
+ ['bg &lt;none|door|glitch&gt;','切换背景'],['shake on|off','故障动效'],['blood on|off','动态恐怖会话'],['retype','重播当前段'],
+ ['book','展开 / 收起命令书'],['help 或 ?','命令摘要'],['export','导出存档码'],['import &lt;码&gt;','导入存档码'],
+ ['erase','清空存档'],['password &lt;新口令&gt;','改口令'],['leave','回主页']
+];
+
+/* 每局随机插入的细节，按场景分组。插入时洗牌，本局不重复 */
+var VARIANTS={
+1:['信封的封口是湿的。','你把信举到灯下，纸背有一道折痕，像被人读过很多次。','楼下的门响了一声。你住这栋楼三年，从没听见它响过。','你翻日历，今天被划掉了。划痕是新的。','饺子袋上的生产日期，是明年。'],
+2:['老周的手指少了一节。他一直把手藏在围裙里。','船舷上刻着一行数字，你数了数，和你年龄一样。','水面浮着一张纸钱，湿了，但没沉。','你回头看岸，码头比刚才远了很多，船明明没动。','老周说热水六点到八点。现在的钟，指针停在五点五十九。'],
+3:['天井里的石榴树没有影子。','楼梯口的灯亮着，灯泡是新的，灯座是旧的。','登记簿翻开的那一页，纸角被人反复摸过，起了毛。','你听见有人在自己的房间里走路，步子和你一样。','墙上的钟没有秒针。'],
+4:['枕头是温的。','窗外的雾里有一盏灯，灯下站着人，你看不清是不是你。','床头柜上有水杯，杯底一圈水印，还没干。','你数地毯的纹路，数到第十三道，忘了从哪儿开始。','门缝下面透进来的光，是红的。'],
+5:['灶台上的锅里有水，水是温的。','院子里晾着一件毛衣，是你的尺码。','你翻抽屉，里面有一叠没拆的信，收信人全是你。','纸人的手指甲是灰的，像真的用过很多年。','录音带的标签上写着你的名字，字迹是林晚的。'],
+6:['锁孔里有一根头发，白的，很长。','灯塔的影子落在地上，比塔本身短。','你数台阶，数到第十七级，脚下是平地。','日志的墨迹在慢慢洇开，像刚写上去。','铁栅栏上挂着一把锁，锁是开着的。'],
+7:['镇民家里的灯，一盏接一盏灭了。','你看见自己的影子比自己先拐过街角。','卖豆腐的摊子上有两张找零，一张是你的。','有人在你身后叫「喂」，你回头，街上没人。','你数路边的纸人，一共九个，上次是八个。'],
+8:['守夜人的灯笼里没有蜡烛。','他们的鞋是干的，地上却全是水。','有人喊你名字，你没答应，声音又喊了一次，用的是林晚的语气。','你听见自己的名字被写在一张纸上。','最矮的守夜人一直看着你的手。'],
+9:['门槛上有一道划痕，像被人反复跨过。','纸条边角有一枚指纹，很小，像是孩子的。','义庄里传出算盘声，响了两下就停了。','白灯笼的光照不到地面。','门缝里飘出一张黄纸，上面没有字。'],
+10:['香灰落下来，是热的。','棺材盖上有一道新的划痕，长度和你的手臂一样。','墙角的蛛网完好，却有一只刚死的蜘蛛。','你数黄纸，第一次二十三张，第二次二十四张。','有人在你耳边说了一个名字，你没听清。'],
+11:['香案上的香少了一根，你没看见谁拿的。','棺盖缝隙里有头发，白的，缠在纸人手上。','墙文里有一条被划掉，划痕下面写着「假的」。','你踩到一滩水，抬头看，天花板是干的。','纸人的眼睛跟着你动，但很慢，慢到你怀疑是自己转头。'],
+12:['红烛的火苗里有黑点，像眼睛。','铜镜背面刻着一串日期，最新的是今天。','纸轿的帘子动了一下，里面传出布料的摩擦声。','壁画上新添了一笔，颜色比周围亮。','你数蜡烛，六根，烛泪却堆了七摊。'],
+13:['名册最上面一页是空的，只写着一个「等」字。','墙缝里塞着很多纸条，你抽出一张，上面是你的字。','铜镜里映出的房间，比你身后的多一扇门。','你听见有人在你身后翻页，速度和你一样。','墙上的字有一行是新的：「别看第七条。」'],
+14:['锁孔是温的。','楼梯上的灯，一盏比一盏暗。','你数台阶，数到第四十七级，忘了从哪儿开始。','门后传来笔尖划纸的声音。','你看见墙上有一道新鲜的指印，和你的手一样大。'],
+15:['册子翻到你那页时，自己停住了。','门外的雾不动了，像被谁按住。','你手里的钥匙变轻了。','有个声音在很远的地方说「快一点」。','地上的影子比你先伸出手。']
+};
+/* 二周目起追加的新选项：打破重复，让每一局都不一样 */
+var EXTRA_OPTS={
+1:[['这封信我好像看过',-5,'你把信翻过来又翻过去。纸角和记忆里的那道缺口对上了。你没有再说什么。']],
+2:[['我不是第一次来',-5,'你想说这句话，老周先点了头，像他早就知道。']],
+3:[['我住过三号房',-5,'你说出房号的时候，老周没有抬头。钥匙已经在柜台上了。']],
+4:[['我留过东西在这里',-5,'你拉开抽屉最里面那一格。里面有一张你的照片，边角磨白了。']],
+5:[['纸人上次也是这个脸',-8,'你盯着它。它比上次更像。或者，是你比上次更记得。']],
+6:[['钥匙我见过',-5,'你摸了摸口袋。钥匙不在口袋里，但手心有钥匙的形状。']],
+7:[['这条路我走过',-5,' you 停下。镇口的路牌换了一面，字还是那些字。']],
+8:[['我知道他们会来',-5,'你提前站到了巷口。他们到的时候，已经晚了半步。']],
+9:[['纸条背面我看过',-8,'你没翻纸条。你记得背面写的是什么，虽然这次没有那行字。']],
+10:[['棺材里是我',-10,'你没有揭黄纸。棺盖上的名字自己变了，又变回去。']],
+11:[['我拿过这把钥匙',-8,'你伸手就摸到了钥匙，没看是哪口棺材。手腕上没有白印。']],
+12:[['这次我先看镜子',-10,'你翻过铜镜。镜子里的人先你一步转过头。']],
+13:[['我写过这行字',-10,'墙上的批注是你的笔迹。墨还没干，虽然你从没来过。']],
+14:[['门后有另一个我',-10,'你没有推门。门自己开了一条缝，里面的人看着你，没有出来。']],
+15:[['结局我见过',-12,'你想起了上一次的选择。这一次，你不确定还是不是你。']]
+};
+/* 实验性玩法：三个独立短篇，只试玩，不收集 */
+var EXPERIMENTS=[
+ {id:'mirror',name:'镜中第七日',desc:'每天照镜子，镜中人比你老一天。',
+  nodes:[
+   ['第一天','镜子里是你。你数了数，一样。'],
+   ['第二天','镜子里的人比你老了一点。你摸了摸脸，还是原来的。'],
+   ['第三天','你洗脸的时候，镜中人没有跟着抬手。'],
+   ['第四天','镜中人开始不看你。它看着你身后。'],
+   ['第五天','你不敢照镜子了。但水龙头里映出了它。'],
+   ['第六天','镜中人坐在床边，背对着你。它比你老了六十岁。'],
+   ['第七天','你出院了。护士说，你已经在里面住了七年。走廊尽头的镜子里，站着年轻时的你。']
+  ]},
+ {id:'roll',name:'点名',desc:'夜班保安听见广播点名，点到你的名字时不要答。',
+  nodes:[
+   ['22:40','广播响了。「请各位同学回宿舍。」你是保安，这里没有学生。'],
+   ['23:10','广播又响了。「点名。」一个一个名字念下去，都是你没听过的。'],
+   ['23:33','念到你的名字。你咬住舌头，没有答。'],
+   ['00:02','广播换了个人。「刚才那位，你还没答到。」'],
+   ['00:41','你跑值班室，关掉广播。喇叭还在念。'],
+   ['01:17','你看了眼监控。走廊里站着很多人，都面朝你的方向，嘴在动。'],
+   ['02:00','天亮了。广播停了。你的名字从值班表上消失了，只剩一个空位。']
+  ]},
+ {id:'reply',name:'回信',desc:'你给三个月前的自己写信，收到了回信。',
+  nodes:[
+   ['周一','你写了第一封信，寄给三个月前的自己。地址是你家，收件人是你。'],
+   ['周三','信箱里有一封回信。字迹是你的。你写道：别去。'],
+   ['周五','你又写一封：为什么。回信第二天到：因为你已经去过了。'],
+   ['第二周','你翻日历，三个月前的那一页被撕掉了。撕口很整齐。'],
+   ['第三周','回信开始变短。最后一次只有四个字：别再写了。'],
+   ['第四周','你收到一封没有信封的信。上面写着：你已经写了四十七封。'],
+   ['最后','你坐在桌前，面前是空白的信纸。你拿起笔，发现自己的手停在纸上，已经写好了：「别寄。」']
+  ]}
+];
+
+/* ================= 存档 ================= */
+function defSettings(){return{bg:'none',bgm:false,sfx:true,speed:30,shake:true,noFx:false,autoSkip:false,log:true,fogIcon:true};}
+function defSave(){return{v:1,loop:1,totalLoops:0,progress:null,fog:1,memory:100,clues:[],keys:[],flags:[],endings:{},czyUnlocked:false,eggSeen:false,settings:defSettings(),bloodSession:false,wallNotes:[],pwd:PASS_DEFAULT,seenIntro:false};}
+var S=defSave(),saveOK=true;
+function loadSave(){try{var r=localStorage.getItem(SAVE_KEY);if(r){var o=JSON.parse(r);S=Object.assign(defSave(),o);S.settings=Object.assign(defSettings(),o.settings||{});['flags','clues','keys'].forEach(function(k){if(!Array.isArray(S[k]))S[k]=[];});if(!S.endings||typeof S.endings!=='object')S.endings={};}}catch(e){saveOK=false;}}
+function writeSave(){if(!saveOK)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){saveOK=false;}}
+function b64enc(s){return btoa(unescape(encodeURIComponent(s)));}
+function b64dec(s){return decodeURIComponent(escape(atob(s)));}
+
+/* ================= 随机（每局一种） ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+var RUN={seed:0,rng:Math.random,used:{}};
+function newRun(){RUN.seed=(Date.now()^(Math.random()*0xffffffff))>>>0;RUN.rng=mulberry32(RUN.seed);RUN.used={};}
+function pick(arr){if(!arr||!arr.length)return null;var i=Math.floor(RUN.rng()*arr.length)%arr.length;return arr[i];}
+function pickFresh(key,arr){var used=RUN.used[key]||(RUN.used[key]={});var pool=arr.filter(function(_,i){return !used[i];});if(!pool.length)return null;var idx=arr.indexOf(pick(pool));if(idx<0)return null;used[idx]=1;return arr[idx];}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(RUN.rng()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* ================= 打字机 ================= */
+var audioCtx=null;
+function tick(){if(!S.settings.sfx)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')return;var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='square';o.frequency.value=1100+Math.random()*300;g.gain.setValueAtTime(.01,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.017);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.02);}catch(e){}}
+var T={q:[],cur:null,timer:null,hold:null};
+function speed(){return S.settings.noFx?0:(S.settings.speed||30);}
+function tAdd(el,text,done){T.q.push({el:el,text:String(text||''),i:0,done:done||null});if(!T.cur)pump();}
+function tClear(){if(T.timer)clearInterval(T.timer);if(T.hold)clearTimeout(T.hold);T.timer=null;T.hold=null;T.cur=null;T.q=[];}
+function renderCur(){var c=T.cur;if(!c)return;c.el.textContent=c.text.slice(0,c.i);var s=document.createElement('span');s.className='cur';s.textContent=' ';c.el.appendChild(s);}
+function pump(){if(T.cur||!T.q.length)return;T.cur=T.q.shift();T.cur.i=0;renderCur();var sp=speed();if(sp<=0){T.cur.i=T.cur.text.length;renderCur();finishCur();return;}T.timer=setInterval(function(){if(!T.cur)return;T.cur.i++;if(T.cur.i>=T.cur.text.length){clearInterval(T.timer);T.timer=null;finishCur();return;}renderCur();tick();},sp);}
+function finishCur(){var c=T.cur;if(!c)return;if(c.el)c.el.textContent=c.text;T.cur=null;if(c.done){try{c.done();}catch(e){}}T.hold=setTimeout(function(){T.hold=null;pump();},S.settings.noFx?0:90);}
+function skipType(){if(T.cur){if(T.timer){clearInterval(T.timer);T.timer=null;}T.cur.i=T.cur.text.length;finishCur();return true;}if(T.hold){clearTimeout(T.hold);T.hold=null;pump();return true;}return false;}
+function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('on');},1500);}
+
+/* ================= 层 / 视觉 ================= */
+function layer(id){var ls=document.querySelectorAll('.layer');for(var i=0;i<ls.length;i++)ls[i].classList.remove('on');if(id)document.getElementById(id).classList.add('on');}
+function layerOn(id){return document.getElementById(id).classList.contains('on');}
+function applyVisual(){
+  var cls=(S.settings.bg==='none'||S.bloodSession)?'blood ':'';
+  if(S.settings.noFx)cls+='no-fx ';
+  document.body.className=cls;
+  document.getElementById('bg').setAttribute('data-mode',S.settings.bg||'none');
+  document.body.classList.toggle('deep',S.bloodSession||S.fog>=3);
+  var f=document.getElementById('fogIcon');f.style.display=(S.settings.fogIcon&&layerOn('story'))?'block':'none';
+  f.setAttribute('data-fog',S.fog);
+}
+function flashFace(){var el=document.getElementById('flashFace');el.style.backgroundImage="url('assets/face_white.png')";el.classList.add('on');setTimeout(function(){el.classList.remove('on');},130);}
+function crossFace(){var el=document.getElementById('cross');el.style.backgroundImage=RUN.rng&&RUN.rng()<.35?"url('assets/red_door.png')":"url('assets/face_cracked.png')";el.classList.add('on');setTimeout(function(){el.classList.remove('on');},230);}
+
+/* ================= 主页 ================= */
+function refreshMenu(){
+  var lead=document.getElementById('menuLead'),stat=document.getElementById('menuStat');
+  lead.textContent='';stat.textContent='';
+  tAdd(lead,'处理完我就回。');
+  var got=Object.keys(S.endings).length;
+  tAdd(stat,S.loop>1?('已走 '+S.loop+' 周目 · 已解锁 '+got+'/48'):(got>0?('已解锁 '+got+'/48'):'还没有人回来过。'));
+  applyVisual();
+}
+
+/* ================= 叙事：固定线性 1→15 ================= */
+var CUR={scene:1,node:null,paras:[],pi:0,choices:[],table:[],locked:false,extra:0};
+function startGame(){newRun();CUR.scene=1;CUR.locked=false;playScene(1);}
+function nodeFor(scene,fog,kind,branch){var sc=GAME_DATA.scenes[scene-1];if(!sc)return null;var ns=sc.nodes,i;
+  if(kind){for(i=0;i<ns.length;i++)if(ns[i].kind===kind&&(!branch||ns[i].branch===branch))return ns[i];}
+  for(i=0;i<ns.length;i++)if(ns[i].kind==='fog'&&ns[i].fog===fog)return ns[i];
+  for(i=0;i<ns.length;i++)if(ns[i].kind==='fog')return ns[i];return ns[0]||null;}
+function pickBranch(){var o=['copper','silver','iron','wood'];for(var i=0;i<o.length;i++)if(S.keys.indexOf(o[i])>=0)return o[i];return 'copper';}
+function playScene(num){
+  CUR.scene=num;S.progress={scene:num};writeSave();layer('story');applyVisual();
+  if(num>1&&RUN.rng()<.55)crossFace();
+  var head=document.getElementById('storyHead'),box=document.getElementById('storyText'),opts=document.getElementById('opts');
+  head.textContent='';box.innerHTML='';opts.innerHTML='';
+  tAdd(head,num+' / 15  ·  '+GAME_DATA.scenes[num-1].name);
+  var node;
+  if(num===15){
+    var br=pickBranch(),bn=nodeFor(15,3,'branch',br),other=null,ns15=GAME_DATA.scenes[14].nodes;
+    for(var q=0;q<ns15.length;q++)if(ns15[q].kind==='other')other=ns15[q];
+    node=nodeFor(15,3,'common')||bn;
+    CUR.table=(bn?bn.table:[]).concat(other?other.table:[]);
+  }else{
+    node=num===14?nodeFor(14,3,'branch',pickBranch()):nodeFor(num,S.fog);
+    CUR.table=node&&node.table?node.table:[];
+  }
+  CUR.node=node;
+  var paras=(node&&node.text?node.text:'').split(/\n\n+/).filter(Boolean);
+  var detail=pickFresh('scene'+num,VARIANTS[num]||[]);
+  if(detail)paras.splice(Math.min(2,paras.length),0,detail);
+  if(S.loop>=3&&num>1&&num<14&&S.fog===3&&RUN.rng()<.4){
+    var scn=GAME_DATA.scenes[num-1];
+    for(var z=0;z<scn.nodes.length;z++){var nn=scn.nodes[z];if(nn.kind==='fog'&&nn.fog<3&&nn.text){var lp=nn.text.split(/\n\n+/).filter(Boolean);paras.unshift(pick(lp));break;}}
+  }
+  CUR.paras=paras;CUR.pi=0;CUR.locked=false;CUR.extra=0;
+  writePara();
+}
+function writePara(){
+  if(CUR.pi>=CUR.paras.length){setTimeout(showChoices,380);return;}
+  var box=document.getElementById('storyText'),p=document.createElement('p');box.appendChild(p);
+  tAdd(p,CUR.paras[CUR.pi],function(){addLog(CUR.paras[CUR.pi]);CUR.pi++;setTimeout(writePara,speed()>0?360:0);});
+}
+function addLog(t){var l=document.getElementById('logBox'),d=document.createElement('div');d.textContent=t;l.appendChild(d);while(l.children.length>200)l.removeChild(l.firstChild);}
+function parseChoices(s){return s?s.split('/').map(function(x){return x.trim();}).filter(Boolean):[];}
+function showChoices(){
+  if(CUR.scene===15){showEndingChoices();return;}
+  var opts=document.getElementById('opts');opts.innerHTML='';
+  var list=parseChoices(CUR.node&&CUR.node.choices);if(!list.length)list=['继续'];
+  var extras=S.loop>=2?(EXTRA_OPTS[CUR.scene]||[]):[];
+  extras.forEach(function(e){if(list.indexOf(e[0])<0)list.push(e[0]);});
+  if(S.loop>=2&&list.length>3)list=shuffle(list).slice(0,4);
+  CUR.choices=list;
+  list.forEach(function(c){
+    var b=document.createElement('button'),isNew=false;
+    extras.forEach(function(e){if(e[0]===c)isNew=true;});
+    b.className='opt'+(isNew?' new':'');opts.appendChild(b);tAdd(b,c);
+    b.onclick=function(){if(CUR.locked)return;if(T.cur||T.hold){skipType();return;}doChoice(c);};
+  });
+  CUR.locked=false;
+}
+function showEndingChoices(){
+  var opts=document.getElementById('opts');opts.innerHTML='';
+  var rows=CUR.table.slice();
+  if(!rows.length){var b=document.createElement('button');b.className='opt';b.textContent='离开';opts.appendChild(b);b.onclick=function(){finishRun(resolveEnding('离开',''));};return;}
+  rows.forEach(function(r){var b=document.createElement('button');b.className='opt';opts.appendChild(b);tAdd(b,r[0]||'继续');
+    b.onclick=function(){if(CUR.locked)return;CUR.locked=true;finishRun(resolveEnding(r[0]||'',r[1]||''));};});
+}
+function addClue(id){if(id&&S.clues.indexOf(id)<0)S.clues.push(id);}
+function addKey(k){if(k&&S.keys.indexOf(k)<0)S.keys.push(k);}
+function setFlag(f){if(f&&S.flags.indexOf(f)<0)S.flags.push(f);}
+function subMemory(n){S.memory=Math.max(0,S.memory-n);}
+function doChoice(text){
+  if(T.cur||T.hold){skipType();return;}
+  CUR.locked=true;var sc=CUR.scene,l=text;
+  if(/带走|拿走|带上/.test(l)){if(/照片/.test(l))addClue('I01');if(/录音/.test(l))addClue('I02');if(/日记/.test(l))addClue('F06');if(/纸人/.test(l))addClue('M01');if(sc===5||sc===4)subMemory(5);}
+  if(/报警|等一天/.test(l)&&sc===1)subMemory(10);
+  if(/揭黄纸/.test(l)){setFlag('recognized');subMemory(15);}
+  if(/吹红烛/.test(l)){setFlag('candle_blown');subMemory(20);}
+  if(/翻铜镜/.test(l))setFlag('mirror_flipped');
+  if(/叫(她|他的)?名字|答应/.test(l))setFlag('name_taken');
+  if(/墙文|替她拜堂|拜堂/.test(l))setFlag('wall_believed');
+  if(/白灯笼灭|灯笼灭/.test(l))setFlag('entered_dark');
+  if(/留下|铭刻|写名字/.test(l))S.flags.push('_stay');
+  if(/握(住)?她的手/.test(l))S.flags.push('_held');
+  if(/回头/.test(l))S.flags.push('_lookback');
+  if(/上船|离开/.test(l))S.flags.push('_leave');
+  if(/独自/.test(l))S.flags.push('_alone');
+  if(/烧名册/.test(l))S.flags.push('_burn');
+  if(/两扇门/.test(l))S.flags.push('_both');
+  if(/拍照|发给外界/.test(l))S.flags.push('_photo');
+  if(/继续往下/.test(l))S.flags.push('_deeper');
+  if(/刻/.test(l))S.flags.push('_carve');
+  if(/等待/.test(l))S.flags.push('_wait');
+  if(/讲给|讲故事/.test(l))S.flags.push('_tell');
+  var ex=(EXTRA_OPTS[sc]||[]).filter(function(e){return e[0]===l;})[0];
+  if(ex){subMemory(Math.abs(ex[1]));showExtra(ex[2],sc);return;}
+  if(sc===8&&/逃跑/.test(l)){finishRun(14);return;}
+  if(sc===8&&/跟守夜人走/.test(l)){finishRun(23);return;}
+  if(sc===13&&/跟 czy 对话/.test(l)){showCzy();return;}
+  giveSceneClues(sc,l);
+  if(sc===5)S.fog=2;
+  if(sc===10)S.fog=3;
+  if(S.fog===3&&!S.bloodSession)S.bloodSession=true;
+  writeSave();applyVisual();playScene(sc+1);
+}
+function showExtra(txt,sc){
+  var box=document.getElementById('storyText'),p=document.createElement('p');p.style.color='#b98c7c';box.appendChild(p);
+  var opts=document.getElementById('opts');opts.innerHTML='';
+  tAdd(p,txt,function(){var b=document.createElement('button');b.className='opt';opts.appendChild(b);tAdd(b,'继续');
+    b.onclick=function(){if(T.cur||T.hold){skipType();return;}giveSceneClues(sc,'');writeSave();applyVisual();playScene(sc+1);};});
+}
+function giveSceneClues(sc,l){
+  var map={1:[],2:['F16'],3:['F01','M05'],4:['F03','F04'],5:['F06','F08','M01','R02'],6:['F09','I03'],7:['M05'],8:['F17'],9:['R03'],10:['F13'],11:[],12:['I04','I05','R04','M03','F14'],13:['M04','I07','F15'],14:['F10','M02']};
+  (map[sc]||[]).forEach(addClue);
+  if(sc===5&&/录音/.test(l))addClue('I02');if(sc===5&&/照片/.test(l))addClue('I01');
+  if(sc===12&&/铜钥匙/.test(l))addKey('copper');if(sc===12&&/银钥匙/.test(l))addKey('silver');
+  if(sc===11&&/铁钥匙/.test(l)){addKey('iron');addClue('I06');}
+  if(sc===13&&/木钥匙/.test(l))addKey('wood');
+  if(sc===6&&S.loop>=3)addClue('F12');if(sc===4&&S.loop>=2)addClue('F05');
+  if(sc===13&&S.loop>=3){addClue('M04');addClue('M06');}
+  if(sc===2&&RUN.rng()<.5)addClue('F02');
+  if(sc===5&&RUN.rng()<.5)addClue('F07');
+  if((sc===3||sc===9)&&RUN.rng()<.5){addClue('R01');addClue('R05');}
+}
+function hasAllClues(){return S.clues.length>=35;}
+function resolveEnding(label,desc){
+  var m=parseInt((desc.match(/结局\s*(\d+)/)||[])[1],10)||parseInt((desc.match(/\b(\d+)\b/)||[])[1],10);
+  var low=S.memory<40,high=S.memory>=70,few=S.clues.length<12;
+  var cu=S.keys.indexOf('copper')>=0,si=S.keys.indexOf('silver')>=0,ir=S.keys.indexOf('iron')>=0;
+  var f=function(x){return S.flags.indexOf(x)>=0;};
+  if(S.memory<=0)return 21;
+  if(/让我出去/.test(label))return 39;if(/别写了/.test(label))return 40;if(/你是谁/.test(label))return 41;
+  if(/把结局给我/.test(label))return 42;if(/你哭了吗/.test(label))return 45;
+  if(/铭刻/.test(label))return hasAllClues()?26:28;
+  if(/一起消失|握住她的手/.test(label))return 27;
+  if(/讲给|讲故事/.test(label))return hasAllClues()&&S.memory>=60?38:13;
+  if(/烧名册/.test(label))return 12;if(/用记忆换/.test(label))return 11;
+  if(/拍照|发给外界/.test(label))return 16;
+  if(/陪尸体|留下陪/.test(label))return 24;
+  if(/留下守名册/.test(label)&&cu)return 5;if(/留下/.test(label)&&cu)return 5;
+  if(/带她去海边|海边/.test(label))return low?35:7;
+  if(/带她离开/.test(label))return low?10:(few?28:9);
+  if(/独自离开/.test(label))return f('_held')?17:13;
+  if(/两扇门都开/.test(label))return 20;if(/穿嫁衣|完成仪式/.test(label))return 18;
+  if(/看新娘的脸|看纸轿脸/.test(label))return 32;if(/掀开轿帘|打开纸轿/.test(label))return 33;
+  if(/翻铜镜/.test(label))return 19;if(/继续往下/.test(label))return 29;
+  if(/刻/.test(label))return hasAllClues()&&high?31:43;
+  if(/翻最底层/.test(label))return 34;if(/看名册最后一页/.test(label))return 22;
+  if(/看墙上的字/.test(label))return 31;if(/等待/.test(label))return 30;
+  if(/上船|离开/.test(label)){
+    if(ir&&low)return 25;if(f('_lookback'))return 4;if(f('_alone'))return 13;
+    if(cu&&f('_held'))return 1;if(S.clues.indexOf('I01')>=0)return 3;
+    if(S.clues.indexOf('I02')>=0)return 6;if(cu)return 1;if(si)return 8;return 2;
+  }
+  if(m&&m>=1&&m<=48)return m;
+  if(f('wall_believed'))return 23;if(ir)return 29;if(si)return 18;if(cu)return 13;return 2;
+}
+
+/* ================= 结局 ================= */
+function finishRun(id){
+  var e=GAME_DATA.endings[id-1];if(!e){id=2;e=GAME_DATA.endings[1];}
+  var fresh=!S.endings[id];
+  if(fresh)S.endings[id]={firstFog:S.fog,at:Date.now(),tainted:false};
+  S.loop++;S.totalLoops++;S.progress=null;writeSave();
+  layer('ending');
+  var no=document.getElementById('endNo'),box=document.getElementById('endText');no.textContent='';box.innerHTML='';
+  var got=Object.keys(S.endings).length;
+  tAdd(no,'—— 结局 '+id+'：'+e.name+'　·　已收集 '+got+' / 48');
+  setTimeout(function(){typeParas(box,e.intro||'');},300);
+  if(S.bloodSession||S.fog>=3)setTimeout(function(){document.getElementById('finale').classList.add('on');},800);
+  checkFull();
+}
+function typeParas(box,text){box.innerHTML='';var ps=text.split(/\n\n+/).filter(Boolean),i=0;
+  function nxt(){if(i>=ps.length)return;var p=document.createElement('p');box.appendChild(p);tAdd(p,ps[i],function(){i++;setTimeout(nxt,200);});}nxt();}
+function checkFull(){if(Object.keys(S.endings).length<48)return;
+  var modal=document.getElementById('modal'),body=document.getElementById('modalBody');body.innerHTML='';modal.classList.add('on');
+  var p=document.createElement('div');p.style.cssText='white-space:pre-wrap;line-height:2';body.appendChild(p);
+  tAdd(p,'全部结局已解锁。\n可以开启 czy 模式。\n故事，到你了。');
+  var b=document.createElement('button');b.className='btn';b.style.marginTop='14px';body.appendChild(b);
+  tAdd(b,'进入 czy 模式');b.onclick=function(){S.czyUnlocked=true;writeSave();modal.classList.remove('on');layer('');toast('故事，到你了。');};}
+function showCzy(){layer('story');var box=document.getElementById('storyText');box.innerHTML='';typeParas(box,GAME_DATA.czyText);
+  var opts=document.getElementById('opts');opts.innerHTML='';
+  ['你为什么要写她消失？','她是真的吗？','你能改结局吗？','让我出去。','别写了。'].forEach(function(t){
+    var b=document.createElement('button');b.className='opt';opts.appendChild(b);tAdd(b,t);
+    b.onclick=function(){if(T.cur){skipType();return;}finishRun(t.indexOf('别写')>=0?40:(t.indexOf('出去')>=0?39:41));};});}
+
+/* ================= 图鉴 ================= */
+function groupOf(id){return id<=8?0:id<=20?1:id<=37?2:id<=45?3:4;}
+function buildGallery(){
+  var stat=document.getElementById('galStat'),body=document.getElementById('galleryBody');stat.textContent='';body.innerHTML='';
+  var got=Object.keys(S.endings).length;tAdd(stat,'已收集 '+got+' / 48');
+  for(var g=0;g<5;g++){
+    var list=GAME_DATA.endings.filter(function(e){return groupOf(e.id)===g;});
+    var gotG=list.filter(function(e){return !!S.endings[e.id];}).length;
+    var title=document.createElement('div');title.className='grpTitle';body.appendChild(title);tAdd(title,GROUPS[g]+' · '+gotG+'/'+list.length);
+    if(gotG===list.length){var sum=document.createElement('div');sum.className='grpSum';body.appendChild(sum);tAdd(sum,GRSUM[g]);}
+    var grid=document.createElement('div');grid.className='grid';body.appendChild(grid);
+    list.forEach(function(e){var un=!!S.endings[e.id],c=document.createElement('div');
+      c.className='cell'+(un?' open':'')+(!un&&e.fog===3&&S.fog>=3?' glitch3':'');
+      c.textContent=un?e.name:(g===4&&!S.czyUnlocked?'？？？':'结局 '+e.id+'：■■■');
+      c.onclick=function(){detail(e,un);};grid.appendChild(c);});
+  }
+}
+function detail(e,un){var body=document.getElementById('modalBody');body.innerHTML='';
+  var h=document.createElement('h2');h.textContent=un?e.name:('结局 '+e.id+'：■■■');body.appendChild(h);
+  var p=document.createElement('div');p.style.cssText='text-align:left;line-height:2;font-size:13px;white-space:pre-wrap;min-height:100px';body.appendChild(p);
+  tAdd(p,un?(e.intro+'\n\n首次触发：雾浓度 '+S.endings[e.id].firstFog):(e.glitch&&e.glitch[1]?e.glitch[1].replace('简介：',''):'▒░▓░ 记得 ░▒ 什么 ░░'));
+  document.getElementById('modal').classList.add('on');}
+
+/* ================= 实验性玩法（不计结局、不计周目） ================= */
+var EXP={on:false,idx:0,pi:0};
+function openExp(){EXP.on=true;EXP.idx=0;EXP.pi=0;layer('story');runExpNode();}
+function runExpNode(){var ex=EXPERIMENTS[EXP.idx];if(!ex)return;
+  var head=document.getElementById('storyHead'),box=document.getElementById('storyText'),opts=document.getElementById('opts');
+  head.textContent='实验 '+(EXP.idx+1)+' / '+EXPERIMENTS.length+' · '+ex.name;box.innerHTML='';opts.innerHTML='';
+  EXP.pi=0;EXP.lines=ex.nodes;
+  tAdd(head,ex.name);writeExpLine();}
+function writeExpLine(){var opts=document.getElementById('opts');opts.innerHTML='';
+  if(EXP.pi>=EXP.lines.length){
+    var b=document.createElement('button');b.className='opt';opts.appendChild(b);tAdd(b,'结束试玩（不收集）');
+    b.onclick=function(){EXP.on=false;layer('menu');refreshMenu();};return;}
+  var box=document.getElementById('storyText'),line=EXP.lines[EXP.pi],p=document.createElement('p');
+  if(EXP.pi>0){var h=document.createElement('div');h.className='small';h.textContent=line[0];box.appendChild(h);}
+  box.appendChild(p);tAdd(p,line[1],function(){EXP.pi++;setTimeout(writeExpLine,speed()>0?380:0);});}
+
+/* ================= 高级 ================= */
+function runCommand(){var raw=document.getElementById('cmdInput').value.trim();document.getElementById('cmdInput').value='';if(!raw)return;
+  blackout(function(){var out=applyCommand(raw.toLowerCase().split(/\s+/),raw),el=document.getElementById('cmdOut');el.textContent='';tAdd(el,out);});}
+function applyCommand(p,raw){var a=p[0],n=parseInt(p[1],10),idx;
+  if(a==='fog'){if(!isNaN(n)&&n>=1&&n<=3){S.fog=n;if(n===3)S.bloodSession=true;writeSave();applyVisual();return 'fog is '+n+'.';}return 'fog: '+S.fog+'.';}
+  if(a==='mind'){if(!isNaN(n)){S.memory=Math.max(0,Math.min(100,n));writeSave();return 'mind is '+S.memory+'.';}return 'mind: '+S.memory+'.';}
+  if(a==='loop')return 'loop: '+S.loop+'.';if(a==='where')return 'scene '+(CUR.scene||1)+'.';if(a==='seed')return 'seed: '+RUN.seed+'.';
+  if(a==='clues')return S.clues.length?S.clues.join(' '):'no clues.';
+  if(a==='keys')return S.keys.length?S.keys.map(function(k){return KEYCN[k]||k;}).join(' '):'no keys.';
+  if(a==='rules')return '白灯笼 / 黄纸 / 红烛 / 铜镜 / 叫名字\n'+S.flags.filter(function(f){return FLAGS.indexOf(f)>=0;}).join(' ');
+  if(a==='ends')return Object.keys(S.endings).length+' / 48.';
+  if(a==='state')return JSON.stringify({loop:S.loop,fog:S.fog,memory:S.memory,clues:S.clues,keys:S.keys,flags:S.flags,blood:S.bloodSession,seed:RUN.seed});
+  if(a==='go'){
+    if(p[1]==='lighthouse'){playScene(14);return 'go lighthouse.';}
+    if(p[1]==='end'&&!isNaN(n)){goEnding(n);return 'go end '+n+'.';}
+    if(!isNaN(n)&&n>=1&&n<=15){playScene(n);return 'go scene '+n+'.';}return 'go: need a number.';}
+  if(a==='home'||a==='leave'){layer('menu');refreshMenu();return 'home.';}
+  if(a==='back'){if(CUR.scene>1)playScene(CUR.scene-1);return 'back.';}
+  if(a==='give'){if(p[1]==='clue'&&p[2]){addClue(p[2].toUpperCase());writeSave();return 'give clue '+p[2].toUpperCase()+'.';}
+    if(p[1]==='key'&&p[2]){addKey(p[2].toLowerCase());writeSave();return 'give key '+p[2]+'.';}return 'give: clue or key.';}
+  if(a==='clear'){if(p[1]==='rule'&&p[2]){idx=S.flags.indexOf(p[2]);if(idx>=0)S.flags.splice(idx,1);writeSave();return 'clear rule '+p[2]+'.';}
+    if(p[1]==='all'){S.flags=[];writeSave();return 'clear all.';}return 'clear: rule or all.';}
+  if(a==='unlock'){if(p[1]==='all'){for(var i=1;i<=48;i++)if(!S.endings[i])S.endings[i]={firstFog:S.fog,at:Date.now(),tainted:true};writeSave();return 'unlock all (debug).';}
+    if(p[1]==='end'&&!isNaN(n)&&n>=1&&n<=48){if(!S.endings[n])S.endings[n]={firstFog:S.fog,at:Date.now(),tainted:true};writeSave();return 'unlock end '+n+'.';}return 'unlock: end <n> or all.';}
+  if(a==='lock'){if(p[1]==='all'){S.endings={};writeSave();return 'lock all.';}if(p[1]==='end'&&!isNaN(n)){delete S.endings[n];writeSave();return 'lock end '+n+'.';}return 'lock: end <n> or all.';}
+  if(a==='commit'){Object.keys(S.endings).forEach(function(k){if(S.endings[k].tainted)S.endings[k].tainted=false;});writeSave();return 'commit. 写下了。';}
+  if(a==='speed'){var sp=parseInt(p[1],10);if(!isNaN(sp)&&sp>=0&&sp<=200){S.settings.speed=sp;writeSave();return 'speed is '+sp+'.';}return 'speed: 0~200.';}
+  if(a==='sound'){S.settings.sfx=(p[1]!=='off');writeSave();return 'sound '+(S.settings.sfx?'on':'off')+'.';}
+  if(a==='bgm'){S.settings.bgm=(p[1]==='on');writeSave();applySettings();return 'bgm '+(S.settings.bgm?'on':'off')+'.';}
+  if(a==='bg'){if(['none','door','glitch'].indexOf(p[1])>=0){S.settings.bg=p[1];writeSave();applyVisual();return 'bg is '+p[1]+'.';}return 'bg: none / door / glitch.';}
+  if(a==='shake'){S.settings.shake=(p[1]!=='off');writeSave();return 'shake '+(S.settings.shake?'on':'off')+'.';}
+  if(a==='blood'){S.bloodSession=(p[1]!=='off');writeSave();applyVisual();return 'blood '+(S.bloodSession?'on':'off')+'.';}
+  if(a==='retype'){if(layerOn('story'))playScene(CUR.scene);return 'retype.';}
+  if(a==='book'){var bk=document.getElementById('cmdBook');bk.classList.toggle('on');if(bk.classList.contains('on')&&!bk.innerHTML)buildBook();return 'book.';}
+  if(a==='help'||a==='?'){var bk2=document.getElementById('cmdBook');bk2.classList.add('on');if(!bk2.innerHTML)buildBook();return 'help.';}
+  if(a==='export'){var code=b64enc(JSON.stringify(S)),ta=document.createElement('textarea');ta.value=code;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);return 'exported: '+code.slice(0,38)+'…';}
+  if(a==='import'){try{S=Object.assign(defSave(),JSON.parse(b64dec(p[1])));writeSave();applySettings();return 'imported.';}catch(e){return 'import failed.';}}
+  if(a==='erase'){if(confirm('确定删除本地存档？无法恢复。')){try{localStorage.removeItem(SAVE_KEY);}catch(e){}S=defSave();applySettings();refreshMenu();return 'erased.';}return 'erase canceled.';}
+  if(a==='password'&&p[1]){S.pwd=p[1];writeSave();return 'password changed.';}
+  if(a==='write'){var note=raw.slice(6).trim();if(note){S.wallNotes.push(note);writeSave();return '你写了：'+note;}return 'write: 写点什么。';}
+  if(a==='stop'){finishRun(40);return 'stop.';}
+  if(a==='ask'){showCzy();return 'ask.';}
+  return '纸条上没有这一条。';}
+function buildBook(){var bk=document.getElementById('cmdBook');bk.innerHTML='';var h=document.createElement('div');h.textContent='— 已知的词 —';bk.appendChild(h);
+  COMMANDS.forEach(function(c){var d=document.createElement('div');d.innerHTML='<b>'+c[0]+'</b> — '+c[1];bk.appendChild(d);});}
+function goEnding(id){var e=GAME_DATA.endings[id-1];if(!e)return;layer('ending');document.getElementById('endNo').textContent='—— 结局 '+id+'：'+e.name;
+  var box=document.getElementById('endText');box.innerHTML='';typeParas(box,e.intro||'');}
+function blackout(cb){var el=document.getElementById('blackout');el.classList.add('on');el.classList.add('shake');
+  setTimeout(function(){el.classList.remove('shake');},320);
+  var line=DOUBTS[Math.floor(Math.random()*DOUBTS.length)],box=document.getElementById('boText');box.textContent='';tAdd(box,line);
+  setTimeout(function(){el.classList.remove('on');box.textContent='';try{cb();}catch(e){}},1500);}
+
+/* ================= 设置 ================= */
+var SET_DEF=[['bg','背景','selectBg'],['bgm','背景音乐','bool'],['sfx','打字音效','bool'],['speed','打字速度','select'],
+ ['shake','故障动效','bool'],['noFx','减少动态效果','bool'],['autoSkip','自动跳过已读','bool'],['log','历史回看','bool'],['fogIcon','雾浓度指示器','bool']];
+function buildSettings(){var box=document.getElementById('setItems');box.innerHTML='';
+  SET_DEF.forEach(function(row){var key=row[0],label=row[1],type=row[2],l=document.createElement('label');l.className='chk';box.appendChild(l);
+    var span=document.createElement('span');l.appendChild(span);tAdd(span,label);
+    if(type==='bool'){var inp=document.createElement('input');inp.type='checkbox';inp.checked=!!S.settings[key];l.appendChild(inp);
+      inp.onchange=function(){S.settings[key]=inp.checked;writeSave();applySettings();applyVisual();};}
+    else if(type==='selectBg'){var sel=document.createElement('select');l.appendChild(sel);
+      [['无（黑底）','none'],['红门','door'],['故障图','glitch']].forEach(function(o){var op=document.createElement('option');op.value=o[1];op.textContent=o[0];sel.appendChild(op);});
+      sel.value=S.settings.bg;sel.onchange=function(){S.settings.bg=sel.value;writeSave();applyVisual();};}
+    else{var sel2=document.createElement('select');l.appendChild(sel2);
+      [['慢','60'],['正常','30'],['快','15'],['瞬时','0']].forEach(function(o){var op=document.createElement('option');op.value=o[1];op.textContent=o[0];sel2.appendChild(op);});
+      sel2.value=String(S.settings.speed);sel2.onchange=function(){S.settings.speed=parseInt(sel2.value,10);writeSave();previewSpeed();};}
+  });
+  var extra=document.getElementById('extraRow');extra.innerHTML='';
+  if(S.bloodSession){var b=document.createElement('button');b.className='btn sm gray';extra.appendChild(b);tAdd(b,'离开雾港');b.onclick=function(){S.bloodSession=false;writeSave();applyVisual();toast('离开了。');};}
+  var ab=document.createElement('button');ab.className='btn sm gray';extra.appendChild(ab);tAdd(ab,'关于');ab.onclick=showAbout;}
+function previewSpeed(){var el=document.createElement('div');el.className='small';document.getElementById('setItems').appendChild(el);tAdd(el,'雾在变浓。');}
+function applySettings(){document.body.classList.toggle('no-fx',S.settings.noFx);var bgm=document.getElementById('audio');
+  if(S.settings.bgm){if(!bgm){bgm=document.createElement('audio');bgm.id='audio';bgm.src='assets/bgm.mp3';bgm.loop=true;bgm.volume=.35;document.getElementById('app').appendChild(bgm);}if(bgm.paused)bgm.play().catch(function(){});}
+  else if(bgm)bgm.pause();}
+
+/* ================= 事件 ================= */
+function tap(el,fn){el.addEventListener('click',function(){fn();});}
+tap(document.getElementById('btnStart'),startGame);
+tap(document.getElementById('btnExp'),openExp);
+tap(document.getElementById('btnGallery'),function(){layer('gallery');buildGallery();});
+tap(document.getElementById('galBack'),function(){layer('menu');refreshMenu();});
+tap(document.getElementById('btnSet'),function(){layer('setLayer');buildSettings();});
+tap(document.getElementById('setBack'),function(){layer('menu');refreshMenu();});
+tap(document.getElementById('btnAbout'),showAbout);
+tap(document.getElementById('aboutBack'),function(){layer('menu');refreshMenu();});
+tap(document.getElementById('btnAdv'),function(){layer('advLayer');document.getElementById('advWarn').style.display='block';document.getElementById('advPass').style.display='none';document.getElementById('advPanel').style.display='none';});
+document.getElementById('advYes').onclick=function(){document.getElementById('advWarn').style.display='none';document.getElementById('advPass').style.display='block';document.getElementById('passLabel').textContent='输入口令';document.getElementById('passInput').value='';};
+document.getElementById('advNo').onclick=function(){layer('menu');refreshMenu();};
+document.getElementById('passBack').onclick=function(){layer('menu');refreshMenu();};
+function passCheck(){var v=document.getElementById('passInput').value.trim();if(v!==S.pwd){document.getElementById('passLabel').textContent='纸条上没有这一条。';return;}
+  document.getElementById('advPass').style.display='none';document.getElementById('advPanel').style.display='block';var out=document.getElementById('cmdOut');out.textContent='';tAdd(out,'ready.');}
+document.getElementById('passGo').onclick=passCheck;
+document.getElementById('passInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();passCheck();}});
+document.getElementById('cmdGo').onclick=function(){if(T.cur||T.hold){skipType();return;}runCommand();};
+document.getElementById('cmdInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();if(T.cur||T.hold){skipType();return;}runCommand();}});
+document.getElementById('cmdBookBtn').onclick=function(){var bk=document.getElementById('cmdBook');bk.classList.toggle('on');if(bk.classList.contains('on')&&!bk.innerHTML)buildBook();};
+document.getElementById('advClose').onclick=function(){layer('menu');refreshMenu();};
+document.getElementById('endHome').onclick=function(){document.getElementById('finale').classList.remove('on');layer('menu');refreshMenu();};
+document.getElementById('endGal').onclick=function(){document.getElementById('finale').classList.remove('on');layer('gallery');buildGallery();};
+document.getElementById('finBack').onclick=function(){document.getElementById('finale').classList.remove('on');layer('menu');refreshMenu();};
+document.getElementById('modalClose').onclick=function(){document.getElementById('modal').classList.remove('on');};
+document.getElementById('setErase').onclick=function(){if(!confirm('确定删除本地存档？\n历史、结局、设置都会清空。'))return;
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}S=defSave();applySettings();applyVisual();buildSettings();toast('存档已删除。');};
+document.getElementById('logToggle').onclick=function(){var b=document.getElementById('logBox');b.classList.toggle('on');this.textContent=b.classList.contains('on')?'收起之前':'查看之前';};
+document.getElementById('fogIcon').addEventListener('mouseenter',function(){var t=document.getElementById('fogTip');t.textContent='';t.classList.add('on');tAdd(t,'雾在变浓。');});
+document.getElementById('fogIcon').addEventListener('mouseleave',function(){document.getElementById('fogTip').classList.remove('on');});
+document.addEventListener('click',function(e){var t=e.target;if(t.tagName==='BUTTON'||t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA')return;if(T.cur||T.hold)skipType();});
+document.addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter'){var tag=(e.target.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select')return;e.preventDefault();skipType();}});
+function showAbout(){layer('aboutLayer');var el=document.getElementById('aboutText');el.innerHTML='';typeParas(el,ABOUT_TEXT);}
+
+/* ================= 启动 ================= */
+loadSave();applySettings();applyVisual();
+newRun();
+(function(){
+  var intro=document.getElementById('intro'),done=false;
+  function enter(){if(done)return;done=true;intro.classList.add('off');flashFace();setTimeout(function(){layer('menu');refreshMenu();},520);}
+  intro.addEventListener('click',enter);
+  setTimeout(enter,3600);
+})();
+</script>
+</body>
+</html>
