@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#070508">
+<title>雾港 5.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#070508;color:#d5cbc0;
+ font-family:"Songti SC","SimSun",Georgia,serif;-webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
+#app{position:relative;width:100%;height:100%;overflow:hidden}
+#bg{position:absolute;inset:0;background:#070508;transition:background 1.2s}
+#bg[data-mode="door"]{background:#070508 url('assets/red_door.png') center/cover no-repeat;opacity:.6}
+#bg[data-mode="glitch"]{background:#070508 url('assets/glitch_bg.jpg') center/cover no-repeat;opacity:.55}
+#fog{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 2s;
+ background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(90,10,10,.25) 100%)}
+body.deep #fog{opacity:1}
+#scan{position:absolute;inset:0;pointer-events:none;opacity:.12;
+ background:repeating-linear-gradient(0deg,rgba(0,0,0,.5) 0 1px,transparent 1px 3px)}
+#vign{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 180px 60px #000}
+body.extreme #vign{box-shadow:inset 0 0 260px 110px #000}
+#noise{position:absolute;inset:0;pointer-events:none;opacity:.05;filter:contrast(140%)}
+body.no-fx #noise,body.no-fx #scan{display:none}
+.layer{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px;z-index:5}
+.layer.on{display:flex}
+.panel{width:min(560px,100%);display:flex;flex-direction:column;gap:14px}
+h1{font-size:40px;letter-spacing:14px;color:#efe6dc;font-weight:400;text-align:center;text-shadow:0 0 18px rgba(180,40,40,.35)}
+h2{font-size:22px;letter-spacing:6px;color:#d8c8b8;font-weight:400;text-align:center;margin-bottom:6px}
+.small{font-size:13px;color:#8d7f7f;letter-spacing:2px;text-align:center}
+.lead{font-size:15px;color:#b9a89b;letter-spacing:2px;text-align:center;min-height:22px}
+.stat{font-size:12px;color:#6d5f5f;letter-spacing:2px;text-align:center;min-height:18px}
+.btn{display:block;width:100%;padding:15px;background:rgba(28,18,16,.72);border:1px solid rgba(150,80,70,.35);
+ color:#e2d5c8;font-size:16px;letter-spacing:4px;font-family:inherit;cursor:pointer;text-align:center;
+ transition:background .18s,border-color .18s,color .18s}
+.btn:hover{background:rgba(50,28,24,.85);border-color:rgba(190,60,50,.7);color:#fff}
+.btn:active{transform:scale(.985)}
+.btn.gray{border-color:rgba(110,100,95,.3);color:#9b8b80}
+.btn.sm{width:auto;padding:9px 22px;font-size:13px;letter-spacing:2px}
+.btn.danger{border-color:rgba(160,50,50,.5);color:#c98a7a}
+.btn.danger2{border-color:rgba(220,40,30,.7);color:#e8b0a0;background:rgba(40,12,10,.8)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+#menuFoot{position:absolute;bottom:18px;font-size:11px;color:#5a4e4e;letter-spacing:3px;cursor:pointer;z-index:6}
+#menuFoot span:hover{color:#a88a7a}
+/* 剧情 */
+#storyBox{position:absolute;inset:0;display:flex;flex-direction:column;z-index:6;padding:34px 30px 30px}
+#storyHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+#depthTag{font-size:11px;letter-spacing:3px;color:#7a6a60;border:1px solid rgba(120,90,80,.4);padding:4px 10px;border-radius:2px}
+#storyText{flex:1;overflow-y:auto;font-size:17px;line-height:2;letter-spacing:1px;color:#d5cbc0;
+ -webkit-mask-image:linear-gradient(#000 96%,transparent)}
+#storyText p{margin-bottom:14px}
+#opts{display:flex;flex-direction:column;gap:10px;padding-top:14px}
+.opt{display:block;width:100%;padding:14px;background:rgba(26,17,15,.7);border:1px solid rgba(150,80,70,.3);
+ color:#d8c9bb;font-size:15px;letter-spacing:2px;font-family:inherit;cursor:pointer;text-align:left;
+ transition:background .18s,border-color .18s}
+.opt:hover{background:rgba(60,30,25,.85);border-color:rgba(200,70,55,.7);color:#fff}
+.opt:active{transform:scale(.99)}
+.cur{display:inline-block;width:2px;height:1.1em;background:#c8a;vertical-align:-2px;margin-left:2px;animation:blink .9s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.glit{color:#b34a3a;text-shadow:0 0 6px rgba(200,40,30,.6)}
+/* 结局 */
+#endNo{font-size:20px;letter-spacing:4px;color:#e6d6c6;text-align:center;margin-bottom:4px}
+#endPath{font-size:13px;letter-spacing:2px;color:#c07868;text-align:center;line-height:1.9;margin-bottom:16px}
+#endText{font-size:16px;line-height:2;letter-spacing:1px;color:#d5cbc0;text-align:center;min-height:60px}
+#endHorror{font-size:12px;letter-spacing:2px;color:#9a6a5a;text-align:center;margin-top:6px}
+#endAsk{font-size:14px;letter-spacing:2px;color:#c33;text-align:center;margin-top:14px;min-height:20px;text-shadow:0 0 8px rgba(200,0,0,.5)}
+/* 图鉴 */
+#gallery{overflow-y:auto;justify-content:flex-start;padding-top:40px}
+#galBody{width:min(560px,100%);display:flex;flex-direction:column;gap:20px}
+.grpTitle{font-size:14px;letter-spacing:3px;color:#b9a08a;border-bottom:1px solid rgba(150,80,70,.3);padding-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;
+ background:rgba(24,16,14,.7);border:1px solid rgba(120,80,70,.3);color:#6d5f5f;font-size:12px;
+ letter-spacing:1px;cursor:pointer;padding:4px;line-height:1.4;transition:all .18s}
+.cell.open{color:#e0d2c2;border-color:rgba(190,70,60,.55);background:rgba(44,24,20,.7)}
+.cell:hover{border-color:rgba(200,70,55,.7)}
+/* 模态 */
+#modal{position:absolute;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:20;padding:30px}
+#modal.on{display:flex}
+#modalBox{width:min(520px,100%);background:#120c0b;border:1px solid rgba(170,70,60,.45);padding:26px;display:flex;flex-direction:column;gap:12px;max-height:88vh;overflow-y:auto}
+/* 暂停 */
+#pause{position:absolute;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;z-index:15;flex-direction:column;gap:16px}
+#pause.on{display:flex}
+/* 设置 */
+#setItems{width:min(520px,100%);display:flex;flex-direction:column;gap:4px}
+.chk{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid rgba(120,90,80,.18);gap:12px}
+.chk span{font-size:14px;letter-spacing:1px;color:#c4b5a6}
+.chk input[type=checkbox]{width:18px;height:18px;accent-color:#b04a3a;cursor:pointer}
+.chk select{background:#1a1210;color:#d5cbc0;border:1px solid rgba(150,80,70,.4);padding:6px 10px;font-family:inherit;font-size:13px;cursor:pointer}
+#setBtns{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+/* 关于 */
+#aboutText{font-size:14px;line-height:2.1;letter-spacing:1px;color:#bfae9e;text-align:center;width:min(480px,100%)}
+/* 首屏手写 */
+#intro{position:absolute;inset:0;background:#070508;display:flex;align-items:center;justify-content:center;z-index:50;cursor:pointer;transition:opacity .6s}
+#intro.off{opacity:0;pointer-events:none}
+#intro .tip{position:absolute;bottom:38px;font-size:12px;color:#5e5252;letter-spacing:3px;animation:tb 1.8s ease-in-out infinite}
+@keyframes tb{0%,100%{opacity:.35}50%{opacity:1}}
+#cross{position:fixed;inset:0;z-index:60;background:center/cover no-repeat;opacity:0;pointer-events:none}
+#cross.on{animation:fl .24s}
+@keyframes fl{0%{opacity:0}50%{opacity:.85}100%{opacity:0}}
+/* 突脸 */
+#scare{position:fixed;inset:0;z-index:70;background:center/cover no-repeat #000;opacity:0;pointer-events:none}
+#scare.on{animation:scare .5s}
+@keyframes scare{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.15)}35%{transform:scale(1)}100%{opacity:1}}
+.shake-hard{animation:shakeh .4s}
+@keyframes shakeh{0%,100%{transform:translate(0,0)}20%{transform:translate(-8px,6px)}40%{transform:translate(7px,-5px)}60%{transform:translate(-6px,-7px)}80%{transform:translate(5px,4px)}}
+body.extreme #scan{opacity:.22}
+/* 小游戏 */
+#miniGame{position:absolute;inset:0;background:rgba(5,3,3,.92);display:none;align-items:center;justify-content:center;z-index:25;flex-direction:column;gap:18px;padding:30px}
+#miniGame.on{display:flex}
+#mgTitle{font-size:22px;letter-spacing:5px;color:#e0c8b8;text-align:center}
+#mgHint{font-size:13px;letter-spacing:2px;color:#8a7468;text-align:center}
+#mgBar{width:min(360px,80%);height:14px;background:rgba(40,24,20,.7);border:1px solid rgba(150,80,70,.4);position:relative;overflow:hidden}
+#mgBarFill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#6a1a14,#c0392b);transition:width .05s linear}
+#mgBar .mgZone{position:absolute;top:0;bottom:0;background:rgba(220,120,60,.25);border-left:1px solid rgba(220,140,70,.6);border-right:1px solid rgba(220,140,70,.6)}
+#mgBar .mgNeedle{position:absolute;top:-3px;bottom:-3px;width:3px;background:#efe6dc;box-shadow:0 0 6px rgba(240,230,220,.8)}
+#mgArea{width:min(360px,86%);min-height:170px;border:1px solid rgba(150,80,70,.4);background:rgba(16,10,9,.6);
+ display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;cursor:pointer;
+ font-size:16px;letter-spacing:2px;color:#c8b4a4;line-height:1.8;position:relative;overflow:hidden;user-select:none}
+#mgArea:active{background:rgba(40,22,18,.7)}
+#mgTap{width:min(360px,80%);padding:16px;background:rgba(30,14,12,.8);border:1px solid rgba(190,70,55,.55);
+ color:#e8d2c4;font-size:17px;letter-spacing:4px;font-family:inherit;cursor:pointer}
+#mgTap:hover{background:rgba(60,22,18,.9)}
+#mgTap:active{transform:scale(.98)}
+.mgText{font-size:22px;letter-spacing:3px;color:#c0392b}
+.mgCount{position:absolute;bottom:8px;right:12px;font-size:12px;color:#8a6a5a}
+/* 免责声明 */
+#disclaimer{position:absolute;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:45;padding:30px}
+#disclaimer.on{display:flex}
+#discBox{width:min(520px,100%);background:#0f0a09;border:1px solid rgba(170,70,60,.5);padding:28px;display:flex;flex-direction:column;gap:14px;max-height:88vh}
+#discBox .discScroll{overflow-y:auto;flex:1;font-size:14px;line-height:2.1;letter-spacing:1px;color:#cbb4a4;padding-right:8px;min-height:120px}
+#extreme{position:absolute;inset:0;background:rgba(0,0,0,.95);display:none;flex-direction:column;z-index:46;padding:28px}
+#extreme.on{display:flex}
+#extTitle{font-size:20px;letter-spacing:5px;color:#e0a090;text-align:center;margin-bottom:14px}
+#extScroll{flex:1;overflow-y:auto;font-size:13px;line-height:2.05;letter-spacing:1px;color:#c9b2a2;
+ width:min(600px,100%);margin:0 auto;background:rgba(20,10,9,.5);border:1px solid rgba(150,60,50,.35);padding:18px;margin-bottom:14px}
+#extAgree{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px;color:#d5c0b0;font-size:14px;letter-spacing:1px}
+#extAgree input{width:18px;height:18px;accent-color:#b04a3a}
+#extBtns{display:flex;gap:14px;justify-content:center}
+#toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(30,16,14,.9);
+ border:1px solid rgba(170,70,60,.5);color:#e0c8b8;padding:8px 18px;font-size:13px;letter-spacing:2px;opacity:0;transition:opacity .3s;z-index:30;pointer-events:none}
+#toast.on{opacity:1}
+#fogIcon{position:absolute;top:20px;right:22px;font-size:13px;letter-spacing:2px;color:#8a4a40;z-index:7;display:none}
+body.blood #storyText,body.blood #endText{color:#cbb0a0}
+@media(max-width:420px){h1{font-size:30px}.grid{grid-template-columns:repeat(4,1fr)}#storyText{font-size:15px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bg" data-mode="door"></div>
+  <div id="fog"></div>
+  <div id="scan"></div>
+  <div id="vign"></div>
+  <div id="noise"></div>
+  <div id="cross"></div>
+  <div id="scare"></div>
+  <div id="fogIcon" data-fog="1">雾 1</div>
+
+  <!-- 首屏 -->
+  <div id="intro">
+    <svg width="260" height="140" viewBox="0 0 260 140">
+      <text x="130" y="80" text-anchor="middle" font-family="KaiTi,STKaiti,serif" font-size="66" fill="none"
+        stroke="#e8dccd" stroke-width="1.6" stroke-dasharray="300" stroke-dashoffset="300"
+        style="animation:write 2.6s ease forwards">雾港</text>
+      <style>@keyframes write{to{stroke-dashoffset:0}}</style>
+    </svg>
+    <div class="tip">点击进入</div>
+  </div>
+
+  <!-- 主页 -->
+  <div id="menu" class="layer">
+    <div class="panel">
+      <h1>雾 港</h1>
+      <div class="lead" id="menuLead"></div>
+      <div class="stat" id="menuStat"></div>
+      <button class="btn" id="btnStart">开始游戏</button>
+      <button class="btn" id="btnGallery">我的结局</button>
+      <button class="btn" id="btnSet">设置</button>
+    </div>
+    <div id="menuFoot"><span id="footAbout">关于</span> · <span id="footFull">全屏</span> · v5.0</div>
+  </div>
+
+  <!-- 剧情 -->
+  <div id="story" class="layer" style="justify-content:flex-start">
+    <div id="storyBox">
+      <div id="storyHead"><span id="depthTag">第 1 步</span><span class="small" id="hintEsc">ESC 暂停</span></div>
+      <div id="storyText"></div>
+      <div id="opts"></div>
+    </div>
+  </div>
+
+  <!-- 结局 -->
+  <div id="ending" class="layer">
+    <div class="panel" style="align-items:center">
+      <div id="endNo"></div>
+      <div id="endPath"></div>
+      <div id="endText"></div>
+      <div id="endHorror"></div>
+      <div id="endAsk"></div>
+      <div style="display:flex;gap:14px;margin-top:20px">
+        <button class="btn sm" id="endHome">回主页</button>
+        <button class="btn sm gray" id="endGal">看结局</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div id="gallery" class="layer">
+    <div class="panel">
+      <h2>我的结局</h2>
+      <div class="stat" id="galStat"></div>
+      <div id="galBody"></div>
+      <button class="btn gray sm" id="galBack" style="align-self:center;margin-top:6px">回主页</button>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="setLayer" class="layer">
+    <div class="panel">
+      <h2>设置</h2>
+      <div id="setItems"></div>
+      <div id="setBtns">
+        <button class="btn sm" id="setBack">回主页</button>
+        <button class="btn sm gray" id="setFull">全屏</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关于 -->
+  <div id="aboutLayer" class="layer">
+    <div class="panel" style="align-items:center">
+      <h2>关于</h2>
+      <div id="aboutText"></div>
+      <button class="btn gray sm" id="aboutBack">回主页</button>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div id="pause">
+    <h2>已暂停</h2>
+    <div class="small">剧情没有回头路。退出即放弃本局。</div>
+    <div style="display:flex;gap:14px;margin-top:10px">
+      <button class="btn sm" id="pauseResume">继续</button>
+      <button class="btn sm danger" id="pauseExit">退出到主页</button>
+    </div>
+  </div>
+
+  <!-- 结局详情模态 -->
+  <div id="modal"><div id="modalBox">
+    <div id="mdNo" style="font-size:18px;letter-spacing:3px;color:#e6d6c6"></div>
+    <div id="mdPath" style="font-size:13px;letter-spacing:1px;color:#c07868;line-height:1.9"></div>
+    <div id="mdText" style="font-size:14px;line-height:2;color:#cbb0a0"></div>
+    <button class="btn gray sm" id="modalClose" style="align-self:center">关闭</button>
+  </div></div>
+
+  <!-- 小游戏 -->
+  <div id="miniGame">
+    <div id="mgTitle"></div>
+    <div id="mgHint"></div>
+    <div id="mgBar"><div id="mgBarFill"></div></div>
+    <div id="mgArea"></div>
+    <button id="mgTap">行动</button>
+  </div>
+
+  <!-- 首次免责声明 -->
+  <div id="disclaimer">
+    <div id="discBox">
+      <h2>开始之前</h2>
+      <div class="discScroll" id="discText"></div>
+      <div style="display:flex;gap:12px">
+        <button class="btn sm gray" id="discSet">前往设置</button>
+        <button class="btn sm" id="discStart">开始游戏，我是猛男</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 极度恐怖免责声明 -->
+  <div id="extreme">
+    <div id="extTitle">极度恐怖模式 · 免责声明</div>
+    <div id="extScroll"></div>
+    <div id="extAgree">
+      <input type="checkbox" id="extCheck">
+      <label for="extCheck">我已完整阅读并同意以上声明，确认已做好心理准备</label>
+    </div>
+    <div id="extBtns">
+      <button class="btn sm gray" id="extCancel">再想想</button>
+      <button class="btn sm danger2" id="extConfirm" disabled>确认开启</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+/* ================= 数据 ================= */
+var TREE_DATA = {
+  "root": "0",
+  "nodes": {
+    "0": {
+      "text": "你回到雾港。渡口的雾浓得能拧出水，脚边漂着一封信，信封上是你的名字，邮戳盖着「雾港」。远处，一盏白灯笼亮了一下，又灭了。",
+      "choices": [
+        {
+          "label": "跟着白灯笼走",
+          "to": "1"
+        },
+        {
+          "label": "摸黑走小径",
+          "to": "2"
+        },
+        {
+          "label": "把信扔进水里",
+          "to": "3"
+        }
+      ]
+    },
+    "1": {
+      "text": "白灯笼在前头忽明忽暗，把你领到镇口。镇口的黄纸人排成一排，纸糊的脸都朝着你，像在等你点名。",
+      "choices": [
+        {
+          "label": "数一数纸人",
+          "to": "1.1"
+        },
+        {
+          "label": "低头不看，快步进镇",
+          "to": "1.2"
+        }
+      ]
+    },
+    "2": {
+      "text": "小径黑得像口井，尽头是义庄。门半掩着，里面传来咳嗽声，一声比一声沉，像有个肺里灌了水的人。",
+      "choices": [
+        {
+          "label": "推门进去",
+          "to": "2.1"
+        },
+        {
+          "label": "绕过义庄，走墙根",
+          "to": "2.2"
+        }
+      ]
+    },
+    "3": {
+      "text": "你把信扔进水里，它沉下去，又慢慢浮起来。背面的字被水洇开，多了一行：「你回不去了。」",
+      "choices": [
+        {
+          "label": "跳进水里捞信",
+          "to": "3.1"
+        },
+        {
+          "label": "转身往回跑",
+          "to": "3.2"
+        }
+      ]
+    },
+    "1.1": {
+      "text": "纸人数来数去都是六个，可门口明明只摆了五张黄纸。多出来的那个，正对着你眨眼。",
+      "choices": [
+        {
+          "label": "撕掉那个纸人",
+          "to": "1.1.1"
+        },
+        {
+          "label": "把多出来的烧了",
+          "to": "1.1.2"
+        }
+      ]
+    },
+    "1.2": {
+      "text": "你低着头进镇，身后有人喊你的名字，一声比一声近，最后贴在你耳后，连呼吸都听得见。",
+      "choices": [
+        {
+          "label": "应一声",
+          "to": "1.2.1"
+        },
+        {
+          "label": "捂住耳朵跑",
+          "to": "1.2.2"
+        }
+      ]
+    },
+    "2.1": {
+      "text": "义庄里一排棺材，最中间那口错开一条缝。你凑近看，里面躺着一张你自己的照片，眼睛半睁着。",
+      "choices": [
+        {
+          "label": "掀开棺盖",
+          "to": "2.1.1"
+        },
+        {
+          "label": "把照片翻过去",
+          "to": "2.1.2"
+        }
+      ]
+    },
+    "2.2": {
+      "text": "墙根下蹲着一个小孩，借着月光在画什么。你走近看，画里的人是你现在的样子，连衣服的破口都一样。",
+      "choices": [
+        {
+          "label": "蹲下来看画",
+          "to": "2.2.1"
+        },
+        {
+          "label": "踩过去，当没看见",
+          "to": "2.2.2"
+        }
+      ]
+    },
+    "3.1": {
+      "text": "水很浅，只到脚踝。水底铺满了一模一样的信，每一封都是你的笔迹，每一封都写着你的名字。",
+      "choices": [
+        {
+          "label": "一封封打开看",
+          "to": "3.1.1"
+        },
+        {
+          "label": "只捞起最初那封",
+          "to": "3.1.2"
+        }
+      ]
+    },
+    "3.2": {
+      "text": "你往回跑了很久，雾却越来越浓。等你停下，又回到了渡口。船还在，只是船上空无一人。",
+      "choices": [
+        {
+          "label": "上船",
+          "to": "3.2.1"
+        },
+        {
+          "label": "把船推进雾里",
+          "to": "3.2.2"
+        }
+      ]
+    },
+    "1.1.1": {
+      "text": "你撕掉那个纸人，撕口处没有血，只爬出米粒大小的字，是你的名字，一行又一行，顺着纸缝往外钻。",
+      "choices": [
+        {
+          "label": "把字擦掉",
+          "to": "1.1.1.1"
+        },
+        {
+          "label": "念出来",
+          "to": "1.1.1.2"
+        }
+      ]
+    },
+    "1.1.2": {
+      "text": "烧纸人的时候，纸人在火里笑。火苗是冷的，不烫，只往你手心里钻。",
+      "choices": [
+        {
+          "label": "把手伸进火里",
+          "to": "1.1.2.1"
+        },
+        {
+          "label": "吹灭那团冷火",
+          "to": "1.1.2.2"
+        }
+      ]
+    },
+    "1.2.1": {
+      "text": "你应了一声，那声音却说：「到你了。」你的喉咙开始自己动，像有什么要从里面出来。",
+      "choices": [
+        {
+          "label": "按住喉咙",
+          "to": "1.2.1.1"
+        },
+        {
+          "label": "让它说",
+          "to": "1.2.1.2"
+        }
+      ]
+    },
+    "1.2.2": {
+      "text": "你捂着耳朵跑，撞进一扇还亮着灯的门。屋里坐着的人，都没有脸。",
+      "choices": [
+        {
+          "label": "坐下",
+          "to": "1.2.2.1"
+        },
+        {
+          "label": "夺门而出",
+          "to": "1.2.2.2"
+        }
+      ]
+    },
+    "2.1.1": {
+      "text": "你掀开棺盖，照片里的人睁开了眼，和你四目相对。它的嘴角，一点一点向上扯。",
+      "choices": [
+        {
+          "label": "把它抱出来",
+          "to": "2.1.1.1"
+        },
+        {
+          "label": "盖回棺盖",
+          "to": "2.1.1.2"
+        }
+      ]
+    },
+    "2.1.2": {
+      "text": "你翻过照片，背面写着一行字：「找到铜镜，别照自己。」",
+      "choices": [
+        {
+          "label": "去名册室找铜镜",
+          "to": "2.1.2.1"
+        },
+        {
+          "label": "把照片烧掉",
+          "to": "2.1.2.2"
+        }
+      ]
+    },
+    "2.2.1": {
+      "text": "你蹲下来看画。小孩抬起头，那张脸和你一模一样。",
+      "choices": [
+        {
+          "label": "问它是谁",
+          "to": "2.2.1.1"
+        },
+        {
+          "label": "把画抢过来撕了",
+          "to": "2.2.1.2"
+        }
+      ]
+    },
+    "2.2.2": {
+      "text": "你一脚踩过去，脚底一软。那不是小孩，是一堆黄纸。",
+      "choices": [
+        {
+          "label": "捡起黄纸",
+          "to": "2.2.2.1"
+        },
+        {
+          "label": "继续走，不回头",
+          "to": "2.2.2.2"
+        }
+      ]
+    },
+    "3.1.1": {
+      "text": "你一封封打开，每封信都写着同样一句：「别看完。」",
+      "choices": [
+        {
+          "label": "看最后一封",
+          "to": "3.1.1.1"
+        },
+        {
+          "label": "把信全塞回水里",
+          "to": "3.1.1.2"
+        }
+      ]
+    },
+    "3.1.2": {
+      "text": "你只捞起最初那封。信湿了之后，字慢慢化开，拼成一张脸。",
+      "choices": [
+        {
+          "label": "对着脸笑",
+          "to": "3.1.2.1"
+        },
+        {
+          "label": "把信贴回胸口",
+          "to": "3.1.2.2"
+        }
+      ]
+    },
+    "3.2.1": {
+      "text": "你上了船，船自己动了，往雾深处漂。摆渡的是个纸人，背对着你。",
+      "choices": [
+        {
+          "label": "和纸人说话",
+          "to": "3.2.1.1"
+        },
+        {
+          "label": "把纸人推下水",
+          "to": "3.2.1.2"
+        }
+      ]
+    },
+    "3.2.2": {
+      "text": "你把船推进雾里。船漂远后，雾中亮起一盏白灯笼，越来越近。",
+      "choices": [
+        {
+          "label": "迎上去",
+          "to": "3.2.2.1"
+        },
+        {
+          "label": "跳进水里躲起来",
+          "to": "3.2.2.2"
+        }
+      ]
+    },
+    "1.1.1.1": {
+      "text": "你伸手去擦字，那个被你撕掉的纸人突然从地上立了起来，黑洞洞的眼睛直勾勾盯着你。",
+      "game": {
+        "type": "react",
+        "title": "别和它对上眼",
+        "hint": "它睁眼的一瞬间，立刻点「闭眼」",
+        "success": "E1",
+        "fail": "E2"
+      },
+      "choices": [
+        {
+          "label": "闭眼躲开它",
+          "to": "E1"
+        },
+        {
+          "label": "和它对上眼",
+          "to": "E2"
+        }
+      ]
+    },
+    "1.1.1.2": {
+      "text": "你开始念，念到第三个字，满墙的纸人都抬起了头，跟着你一起念，声音像潮水一样涌过来。",
+      "choices": [
+        {
+          "label": "继续念完",
+          "to": "E3"
+        },
+        {
+          "label": "咬住舌头",
+          "to": "E4"
+        }
+      ]
+    },
+    "1.1.2.1": {
+      "text": "冷火钻进手心，顺着手臂往上爬，所到之处，皮肤变成半透明的纸。",
+      "choices": [
+        {
+          "label": "甩掉火",
+          "to": "E5"
+        },
+        {
+          "label": "让火烧进去",
+          "to": "E6"
+        }
+      ]
+    },
+    "1.1.2.2": {
+      "text": "你凑过去吹，冷火却忽明忽暗。只有等它最暗的那一瞬，这团冷火才吹得灭。",
+      "game": {
+        "type": "timing",
+        "title": "吹熄冷火",
+        "hint": "等指针落进亮起的区间再点",
+        "success": "E7",
+        "fail": "E8"
+      },
+      "choices": [
+        {
+          "label": "看准时机吹熄",
+          "to": "E7"
+        },
+        {
+          "label": "吹早了",
+          "to": "E8"
+        }
+      ]
+    },
+    "1.2.1.1": {
+      "text": "你按住喉咙，那声音从指缝里挤出来，含糊地念着一段你从没听过的祷词。",
+      "choices": [
+        {
+          "label": "跟着念",
+          "to": "E9"
+        },
+        {
+          "label": "死也不松手",
+          "to": "E10"
+        }
+      ]
+    },
+    "1.2.1.2": {
+      "text": "你让它说，它讲完了你的一生，包括那件你没对任何人说过的事。",
+      "choices": [
+        {
+          "label": "求它别说出去",
+          "to": "E11"
+        },
+        {
+          "label": "点头答应它",
+          "to": "E12"
+        }
+      ]
+    },
+    "1.2.2.1": {
+      "text": "你坐下，无脸的人一个个转向你，空白的脸上开始浮出字，是你的名字，越爬越快。",
+      "game": {
+        "type": "mash",
+        "title": "擦掉脸上的字",
+        "hint": "时间结束前点够次数，把字擦干净",
+        "success": "E13",
+        "fail": "E14"
+      },
+      "choices": [
+        {
+          "label": "擦干净脸上的字",
+          "to": "E13"
+        },
+        {
+          "label": "没擦完",
+          "to": "E14"
+        }
+      ]
+    },
+    "1.2.2.2": {
+      "text": "你夺门而出，门外还是那间屋。你再冲，还是那间屋。",
+      "choices": [
+        {
+          "label": "数一数门",
+          "to": "E15"
+        },
+        {
+          "label": "砸窗跳出去",
+          "to": "E16"
+        }
+      ]
+    },
+    "2.1.1.1": {
+      "text": "棺盖重得像灌了铅，照片里的人正撑着棺沿往外爬，你得把它按回去。",
+      "game": {
+        "type": "mash",
+        "title": "把它按回棺材",
+        "hint": "时间结束前点够次数，别让它爬出来",
+        "success": "E17",
+        "fail": "E18"
+      },
+      "choices": [
+        {
+          "label": "把它按回棺材",
+          "to": "E17"
+        },
+        {
+          "label": "没按住",
+          "to": "E18"
+        }
+      ]
+    },
+    "2.1.1.2": {
+      "text": "你盖回棺盖，棺材里传来一阵抓挠声，像有什么在求你放它出去。",
+      "choices": [
+        {
+          "label": "重新打开",
+          "to": "E19"
+        },
+        {
+          "label": "用钉子钉死",
+          "to": "E20"
+        }
+      ]
+    },
+    "2.1.2.1": {
+      "text": "名册室里，铜镜立在角落，镜面蒙着一层水汽，像有人在里面哈过气。",
+      "choices": [
+        {
+          "label": "擦亮照自己",
+          "to": "E21"
+        },
+        {
+          "label": "只照身后",
+          "to": "E22"
+        }
+      ]
+    },
+    "2.1.2.2": {
+      "text": "照片烧起来，火里传出你小时候的声音，一声声喊「哥」。",
+      "choices": [
+        {
+          "label": "从火里抢照片",
+          "to": "E23"
+        },
+        {
+          "label": "让它烧完",
+          "to": "E24"
+        }
+      ]
+    },
+    "2.2.1.1": {
+      "text": "小孩歪着头看你，问：「那你说，我是谁？」",
+      "choices": [
+        {
+          "label": "说它是你",
+          "to": "E25"
+        },
+        {
+          "label": "说不知道",
+          "to": "E26"
+        }
+      ]
+    },
+    "2.2.1.2": {
+      "text": "画上的颜色突然活了，画里的人朝你伸出一只手，指节一点点探出纸面。",
+      "game": {
+        "type": "react",
+        "title": "别接那幅画",
+        "hint": "它出手的一瞬间，立刻点「闭眼」",
+        "success": "E27",
+        "fail": "E28"
+      },
+      "choices": [
+        {
+          "label": "闭眼不看画",
+          "to": "E27"
+        },
+        {
+          "label": "接住伸来的手",
+          "to": "E28"
+        }
+      ]
+    },
+    "2.2.2.1": {
+      "text": "你捡起黄纸，背面写着你的生辰和忌日，忌日那一栏正在一笔一划填上今天的日期。",
+      "game": {
+        "type": "timing",
+        "title": "屏住呼吸",
+        "hint": "等指针落进区间再松手，别让忌日填完",
+        "success": "E29",
+        "fail": "E30"
+      },
+      "choices": [
+        {
+          "label": "屏住呼吸",
+          "to": "E29"
+        },
+        {
+          "label": "没屏住，喘了气",
+          "to": "E30"
+        }
+      ]
+    },
+    "2.2.2.2": {
+      "text": "你继续走，身后越来越沉，像有个人趴在你背上，两只手搭着你的肩。",
+      "choices": [
+        {
+          "label": "回头看",
+          "to": "E31"
+        },
+        {
+          "label": "不回头，一直走",
+          "to": "E32"
+        }
+      ]
+    },
+    "3.1.1.1": {
+      "text": "最后一封没有封口，里面掉出一张照片：你正坐在这条河边，低头看信。",
+      "choices": [
+        {
+          "label": "翻过来看背面",
+          "to": "E33"
+        },
+        {
+          "label": "撕掉照片",
+          "to": "E34"
+        }
+      ]
+    },
+    "3.1.1.2": {
+      "text": "你蹲下去把信塞回水里，水底却突然伸出一只手，死死抓住你的手腕。",
+      "game": {
+        "type": "react",
+        "title": "别和它对视",
+        "hint": "水花炸开的一瞬间，立刻点「闭眼」",
+        "success": "E35",
+        "fail": "E36"
+      },
+      "choices": [
+        {
+          "label": "闭眼不看",
+          "to": "E35"
+        },
+        {
+          "label": "和水底对上眼",
+          "to": "E36"
+        }
+      ]
+    },
+    "3.1.2.1": {
+      "text": "信上的脸对你笑了，嘴角一点一点裂到耳根。",
+      "choices": [
+        {
+          "label": "也笑回去",
+          "to": "E37"
+        },
+        {
+          "label": "把信揉成团",
+          "to": "E38"
+        }
+      ]
+    },
+    "3.1.2.2": {
+      "text": "信贴回胸口，字就渗进皮肤，一行行爬满全身，最后停在心口。",
+      "choices": [
+        {
+          "label": "撕掉信",
+          "to": "E39"
+        },
+        {
+          "label": "让它爬完",
+          "to": "E40"
+        }
+      ]
+    },
+    "3.2.1.1": {
+      "text": "纸人慢慢转过头来。它没有脸，只有一张纸，纸上映着你的脸。",
+      "choices": [
+        {
+          "label": "先开口",
+          "to": "E41"
+        },
+        {
+          "label": "等它开口",
+          "to": "E42"
+        }
+      ]
+    },
+    "3.2.1.2": {
+      "text": "船开始漏水，漏进来的不是水，是雾。雾已经没到了你的膝盖，还在涨。",
+      "game": {
+        "type": "timing",
+        "title": "撑到对岸",
+        "hint": "等指针落进区间再点，稳住这口气",
+        "success": "E43",
+        "fail": "E44"
+      },
+      "choices": [
+        {
+          "label": "屏息撑到岸",
+          "to": "E43"
+        },
+        {
+          "label": "没撑住",
+          "to": "E44"
+        }
+      ]
+    },
+    "3.2.2.1": {
+      "text": "白灯笼停在面前，里面是你的脸，灯芯是你的一根头发。",
+      "choices": [
+        {
+          "label": "伸手去够",
+          "to": "E45"
+        },
+        {
+          "label": "吹灭灯笼",
+          "to": "E46"
+        }
+      ]
+    },
+    "3.2.2.2": {
+      "text": "你跳进水里躲起来，雾却从水面压下来。你得不停拨开水雾，才有一口空气。",
+      "game": {
+        "type": "mash",
+        "title": "拨开水雾",
+        "hint": "时间结束前点够次数，别让雾压下来",
+        "success": "E47",
+        "fail": "E48"
+      },
+      "choices": [
+        {
+          "label": "拨开水雾",
+          "to": "E47"
+        },
+        {
+          "label": "没拨开，沉下去",
+          "to": "E48"
+        }
+      ]
+    }
+  },
+  "endings": {
+    "E1": {
+      "name": "没看见",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "撕掉那个纸人",
+        "把字擦掉",
+        "闭眼躲开它"
+      ],
+      "text": "你赶在纸人睁眼前闭上了眼。再睁开，纸人没了，只剩一摊黄纸。可你总觉得有什么东西跟着你回了家，每晚都站在你床边，数你的呼吸。"
+    },
+    "E2": {
+      "name": "对上眼",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "撕掉那个纸人",
+        "把字擦掉",
+        "和它对上眼"
+      ],
+      "text": "你和纸人对视的那一瞬，眼睛被它借走了。此后你照镜子，眼眶里永远是两张纸糊的灰脸。"
+    },
+    "E3": {
+      "name": "齐声",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "撕掉那个纸人",
+        "念出来",
+        "继续念完"
+      ],
+      "text": "你念完了名字，满镇纸人齐声应和。从此镇子里到处都有人喊你的名字，只有你自己听不见。"
+    },
+    "E4": {
+      "name": "失声",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "撕掉那个纸人",
+        "念出来",
+        "咬住舌头"
+      ],
+      "text": "你咬住舌头，念不下去。纸人们等了一会儿，失望地垂下头。你的舌头从此僵住，再也说不出自己的名字。"
+    },
+    "E5": {
+      "name": "纸手",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "把多出来的烧了",
+        "把手伸进火里",
+        "甩掉火"
+      ],
+      "text": "你把火甩掉，甩掉的还有半条手臂的皮。露出来的，是干透的黄纸。"
+    },
+    "E6": {
+      "name": "新纸人",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "把多出来的烧了",
+        "把手伸进火里",
+        "让火烧进去"
+      ],
+      "text": "火烧进身体，你没有死，只是越来越轻。火灭后你成了一张薄薄的黄纸，被贴到镇口，顶替了那个被你烧掉的纸人。"
+    },
+    "E7": {
+      "name": "熄灯",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "把多出来的烧了",
+        "吹灭那团冷火",
+        "看准时机吹熄"
+      ],
+      "text": "你在最暗的那一瞬吹熄冷火。火灭的瞬间，你听见满镇纸人齐声叹了口气，像等了很久。"
+    },
+    "E8": {
+      "name": "吹不灭",
+      "path": [
+        "跟着白灯笼走",
+        "数一数纸人",
+        "把多出来的烧了",
+        "吹灭那团冷火",
+        "吹早了"
+      ],
+      "text": "你吹早了，冷火顺着你的呼吸钻进肺里。你不停地咳嗽，咳出来的是一团团冷冰冰的火星。"
+    },
+    "E9": {
+      "name": "还魂咒",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "应一声",
+        "按住喉咙",
+        "跟着念"
+      ],
+      "text": "你跟着念完，才知道那是把死人叫回来的咒。雾港的坟一座座裂开，你看见自己的名字，刻在第一块碑上。"
+    },
+    "E10": {
+      "name": "咽回去",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "应一声",
+        "按住喉咙",
+        "死也不松手"
+      ],
+      "text": "你死也不松手，那声音渐渐弱下去，最后咽回了喉咙。可你从此总觉得喉咙里卡着一个人，动不动就想替你说话。"
+    },
+    "E11": {
+      "name": "秘密",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "应一声",
+        "让它说",
+        "求它别说出去"
+      ],
+      "text": "你求它别说，它答应了，条件是你要替它保守一个秘密——雾港每天夜里都要多死一个人，好补上你的位置。"
+    },
+    "E12": {
+      "name": "替一天",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "应一声",
+        "让它说",
+        "点头答应它"
+      ],
+      "text": "它问：「现在，换你替我活一天。」你点了点头。等你再睁眼，你已经成了那个在雾里喊人名字的声音。"
+    },
+    "E13": {
+      "name": "没脸",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "捂住耳朵跑",
+        "坐下",
+        "擦干净脸上的字"
+      ],
+      "text": "你把脸上的字擦干净，无脸的人满意地散去。可你摸自己的脸，已经什么都没有了——它们把你的脸，也一起擦掉了。"
+    },
+    "E14": {
+      "name": "借脸",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "捂住耳朵跑",
+        "坐下",
+        "没擦完"
+      ],
+      "text": "你没擦完，字顺着脖子爬满全身。无脸的人一个个凑过来，把你的脸借去戴上，一人一份，永远还不回来。"
+    },
+    "E15": {
+      "name": "七扇门",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "捂住耳朵跑",
+        "夺门而出",
+        "数一数门"
+      ],
+      "text": "门有七扇，每一扇都通回同一张桌。桌上摆着七碗饭，其中一碗，写的是你的生辰。"
+    },
+    "E16": {
+      "name": "窗外",
+      "path": [
+        "跟着白灯笼走",
+        "低头不看，快步进镇",
+        "捂住耳朵跑",
+        "夺门而出",
+        "砸窗跳出去"
+      ],
+      "text": "你砸开窗跳出去，脚下一空。窗外没有地面，只有一片往下坠的雾。你一直掉，掉回了镇口——原来你从没离开过这张桌。"
+    },
+    "E17": {
+      "name": "按回去",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "掀开棺盖",
+        "把它抱出来",
+        "把它按回棺材"
+      ],
+      "text": "你把照片按回棺材，钉上棺盖，棺材安静了。可你回家照镜子，发现自己的脸正在慢慢变得和照片一样——你才是那个该躺进去的人。"
+    },
+    "E18": {
+      "name": "没按住",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "掀开棺盖",
+        "把它抱出来",
+        "没按住"
+      ],
+      "text": "照片里的人爬出来，和你抱在一起。它轻得像纸，却抱得你喘不过气。等它松开，你已经分不清哪个才是自己。"
+    },
+    "E19": {
+      "name": "空棺",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "掀开棺盖",
+        "盖回棺盖",
+        "重新打开"
+      ],
+      "text": "你重新打开棺盖，里面空空如也。那阵抓挠声，是从你自己的棺材里传出来的——而你的棺材，正停在你家客厅。"
+    },
+    "E20": {
+      "name": "钉死",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "掀开棺盖",
+        "盖回棺盖",
+        "用钉子钉死"
+      ],
+      "text": "你把棺材钉死，抓挠声停了。可那天晚上，你听见自己房间的墙壁里，传来一模一样的抓挠声。"
+    },
+    "E21": {
+      "name": "名册室",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "把照片翻过去",
+        "去名册室找铜镜",
+        "擦亮照自己"
+      ],
+      "text": "你擦亮铜镜照自己，镜子里没有你，只有一个空位。名册上，你的名字下面，已经盖好了「已到」。"
+    },
+    "E22": {
+      "name": "少一个",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "把照片翻过去",
+        "去名册室找铜镜",
+        "只照身后"
+      ],
+      "text": "你只照身后，镜子里映出满屋的纸人，全站在你背后。你数了数，少了一个——少的是本该站在你位置上的那个。"
+    },
+    "E23": {
+      "name": "半张脸",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "把照片翻过去",
+        "把照片烧掉",
+        "从火里抢照片"
+      ],
+      "text": "你从火里抢出照片，照片上的人已经被烧掉半张脸。第二天，你的左脸开始发黑，一块一块往下掉。"
+    },
+    "E24": {
+      "name": "弟弟",
+      "path": [
+        "摸黑走小径",
+        "推门进去",
+        "把照片翻过去",
+        "把照片烧掉",
+        "让它烧完"
+      ],
+      "text": "照片烧完了，火里传出你小时候的声音，一遍遍喊「哥」。你不记得自己有过弟弟。"
+    },
+    "E25": {
+      "name": "换位置",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "蹲下来看画",
+        "问它是谁",
+        "说它是你"
+      ],
+      "text": "你说它是你。小孩笑了，说「那你就是我了」。从那天起，你俩的位置，彻底换了。"
+    },
+    "E26": {
+      "name": "慢慢变成",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "蹲下来看画",
+        "问它是谁",
+        "说不知道"
+      ],
+      "text": "你说不知道。小孩失望地低下头，说「没关系，你很快就会知道的」。那天起，你开始慢慢变成画里那个人的样子。"
+    },
+    "E27": {
+      "name": "碎影子",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "蹲下来看画",
+        "把画抢过来撕了",
+        "闭眼不看画"
+      ],
+      "text": "你闭上眼，画里伸出的手停在半空，又缩了回去。再睁眼，画已经被撕碎了——只是碎的，是你自己的影子。"
+    },
+    "E28": {
+      "name": "下一个人",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "蹲下来看画",
+        "把画抢过来撕了",
+        "接住伸来的手"
+      ],
+      "text": "你接住画里伸出的手，那只手把你往里拽。你栽进画里，从此成了墙根下那个蹲着的小孩，等下一个人路过。"
+    },
+    "E29": {
+      "name": "还会填",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "踩过去，当没看见",
+        "捡起黄纸",
+        "屏住呼吸"
+      ],
+      "text": "你屏住呼吸，忌日那一栏停住不再动了。你轻轻把黄纸放下，转身走。可你知道，它还会再填，迟早的事。"
+    },
+    "E30": {
+      "name": "忌日",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "踩过去，当没看见",
+        "捡起黄纸",
+        "没屏住，喘了气"
+      ],
+      "text": "你没屏住，忌日填完了，正是今天。你抬头，看见自己的棺材，已经抬到了路口。"
+    },
+    "E31": {
+      "name": "掉脸",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "踩过去，当没看见",
+        "继续走，不回头",
+        "回头看"
+      ],
+      "text": "你回头，背上什么都没有。可你听见「啪嗒」一声，是你自己的脸掉在了地上，正在对你笑。"
+    },
+    "E32": {
+      "name": "悬崖",
+      "path": [
+        "摸黑走小径",
+        "绕过义庄，走墙根",
+        "踩过去，当没看见",
+        "继续走，不回头",
+        "不回头，一直走"
+      ],
+      "text": "你不回头，一直走到雾停。天快亮时你回头，来路已经没了，身后是悬崖，而背上的东西，还在。"
+    },
+    "E33": {
+      "name": "来不及了",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "一封封打开看",
+        "看最后一封",
+        "翻过来看背面"
+      ],
+      "text": "照片背面写着：「你看到这一句的时候，已经来不及了。」你抬头，河对面坐着一个人，正在看这封信——那是从前的你。"
+    },
+    "E34": {
+      "name": "少一张脸",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "一封封打开看",
+        "看最后一封",
+        "撕掉照片"
+      ],
+      "text": "你撕掉照片，碎片落进水里，每一片都沉底。水面平静后，倒影里少了一张脸——你的脸。"
+    },
+    "E35": {
+      "name": "五个指印",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "一封封打开看",
+        "把信全塞回水里",
+        "闭眼不看"
+      ],
+      "text": "你闭上眼，那只手松开了。你抽回手腕，上面多了五个淤青的指印，怎么都消不掉。"
+    },
+    "E36": {
+      "name": "河滩",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "一封封打开看",
+        "把信全塞回水里",
+        "和水底对上眼"
+      ],
+      "text": "你和水底的东西对上了眼，那是一张和你一模一样的脸，正隔着水面对你笑。你再也走不出这片河滩。"
+    },
+    "E37": {
+      "name": "笑错了",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "只捞起最初那封",
+        "对着脸笑",
+        "也笑回去"
+      ],
+      "text": "你对着信上的脸笑，它也笑，嘴角裂到耳根。然后你的脸开始自己摆成它的形状，再也停不下来。"
+    },
+    "E38": {
+      "name": "咽下去",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "只捞起最初那封",
+        "对着脸笑",
+        "把信揉成团"
+      ],
+      "text": "你把信揉成团，塞进嘴里咽下去。信在肚子里慢慢展开，你听见自己的五脏六腑里，有人在念上面的字。"
+    },
+    "E39": {
+      "name": "罩住",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "只捞起最初那封",
+        "把信贴回胸口",
+        "撕掉信"
+      ],
+      "text": "你撕掉信，字却已经渗进皮肤。撕掉的纸片飞起来，围着你转，最后拼成了你的轮廓，把你罩在里面。"
+    },
+    "E40": {
+      "name": "寄往下一座镇",
+      "path": [
+        "把信扔进水里",
+        "跳进水里捞信",
+        "只捞起最初那封",
+        "把信贴回胸口",
+        "让它爬完"
+      ],
+      "text": "你让字爬满全身，最后一行停在心口：「寄往下一座镇」。你被塞进邮筒，成了那封要寄出去的信。"
+    },
+    "E41": {
+      "name": "下船",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "上船",
+        "和纸人说话",
+        "先开口"
+      ],
+      "text": "你先开口，纸人没有嘴，却应了你。它说：「船到岸了，下船吧。」你下船，脚下是水。"
+    },
+    "E42": {
+      "name": "纸上的脸",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "上船",
+        "和纸人说话",
+        "等它开口"
+      ],
+      "text": "你等它开口，它却一直背对着你。等了一夜，它才慢慢转过来——它没有脸，只有一张纸，纸上是你自己的脸。"
+    },
+    "E43": {
+      "name": "挥手",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "上船",
+        "把纸人推下水",
+        "屏息撑到岸"
+      ],
+      "text": "你屏息撑到了对岸，回头，船已经沉进雾里。纸人漂在水上，朝你挥了挥手，像在道别。"
+    },
+    "E44": {
+      "name": "不认识",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "上船",
+        "把纸人推下水",
+        "没撑住"
+      ],
+      "text": "你呛了一口雾，雾钻进肺里。等你再上岸，你已经不认识岸上那个正在等你的人了。"
+    },
+    "E45": {
+      "name": "灯芯",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "把船推进雾里",
+        "迎上去",
+        "伸手去够"
+      ],
+      "text": "你伸手去够，灯笼里的脸喊你别碰。你碰到灯芯的瞬间，头发烧了起来，你也跟着熄了。"
+    },
+    "E46": {
+      "name": "心跳",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "把船推进雾里",
+        "迎上去",
+        "吹灭灯笼"
+      ],
+      "text": "你吹灭灯笼，雾港的灯一盏接一盏全灭了。世界黑下来，只剩你的心跳声，在黑暗里越来越响。"
+    },
+    "E47": {
+      "name": "湿透的信",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "把船推进雾里",
+        "跳进水里躲起来",
+        "拨开水雾"
+      ],
+      "text": "你不停拨开水雾，撑到了天亮。雾散了，你发现自己一直站在渡口，手里的信，已经湿透。"
+    },
+    "E48": {
+      "name": "岸上的你",
+      "path": [
+        "把信扔进水里",
+        "转身往回跑",
+        "把船推进雾里",
+        "跳进水里躲起来",
+        "没拨开，沉下去"
+      ],
+      "text": "雾从水面压下来，你没拨开。你沉下去，睁着眼，看见岸上站着一个你，正在看水里。"
+    }
+  }
+};
+var GROUPS = [
+  { key: "跟着白灯笼走", name: "一 · 白灯笼（引魂）", ids: ["E1","E2","E3","E4","E5","E6","E7","E8","E9","E10","E11","E12","E13","E14","E15","E16"] },
+  { key: "摸黑走小径", name: "二 · 义庄（替身）", ids: ["E17","E18","E19","E20","E21","E22","E23","E24","E25","E26","E27","E28","E29","E30","E31","E32"] },
+  { key: "把信扔进水里", name: "三 · 渡口（回魂）", ids: ["E33","E34","E35","E36","E37","E38","E39","E40","E41","E42","E43","E44","E45","E46","E47","E48"] }
+];
+var ABOUT_TEXT = "《雾港》是一个虚构的故事。\n\n镇子不存在，纸人不存在，规矩也不存在。\n\n里面的人都是写的。\n\n本作含心理恐怖描写与突发惊吓，玩不玩，你自己判断。\n\n没有广告，没有付费，存档只在你自己的浏览器里。\n\n5.0 版没有回头路：每一个选择，都会通向一个不同的结局。";
+
+var DISCLAIMER_TEXT = "本游戏含有大量恐怖元素，包括但不限于：\n\n突发惊吓（Jump Scare）、突然的尖锐声响、血腥与压抑的文字描写、心理恐怖暗示、快速闪烁与画面抖动。\n\n这些内容可能引发焦虑、心悸、恶心等不适。\n\n如果你患有心脏病、癫痫、光敏性癫痫或严重的心理障碍，请谨慎或避免游玩。\n\n恐怖元素可在「设置」中关闭或调低（温和模式）。\n\n本作全部为虚构，不含真实事件。\n\n继续游戏即表示你已了解并自愿承受上述内容。";
+
+var EXTREME_TEXT = '【极度恐怖模式 · 特别免责声明】\n\n在你选择开启「极度恐怖模式」之前，请务必逐字读完以下全部内容。这不是一段可以跳过的提示，而是一份关于风险与边界的正式告知。请对自己诚实，也对他人负责。\n\n一、什么是极度恐怖模式\n\n极度恐怖模式是《雾港》在「标准」恐怖之上额外提供的一种沉浸式体验。开启之后，游戏将不再只是让你「看一个故事」，它会尝试用画面、声音与文字的配合，制造一种「你自己仿佛置身其中」的错觉。\n\n具体包括但不限于：更频繁、更突然的突脸画面；更响、更尖锐的惊吓音效；屏幕闪烁、抖动，以及短暂的反色、倒置；文字中插入以「你」为对象的质问与诱导；在结局之后对玩家本人状态的追问。\n\n这些手段的目的，都是增强临场感。也正因如此，它们会成倍地放大不适。\n\n二、你可能会经历什么\n\n开启之后，你在游玩过程中可能会经历：心跳加速、手心出汗、呼吸急促、下意识地躲避或惊叫、短暂失神、对声音和光线变得过度敏感，以及在关闭游戏之后的一段时间里，仍然残留不安、反复回想画面，甚至难以入睡。\n\n对绝大多数人而言，这些反应在关闭游戏、回到明亮安静的环境之后会逐渐消退。但对少数人——尤其是对恐怖内容敏感，或本身正处于疲劳、熬夜、情绪低落、刚经历现实创伤状态的人——这种刺激可能持续更久，甚至诱发惊恐发作。\n\n三、恐惧为什么会发生\n\n恐惧不是软弱。它是你的身体在保护你。当你看到突脸、听到尖叫时，大脑会把它误判为「真实的威胁」，从而释放肾上腺素，让心跳加快、肌肉紧绷，随时准备逃跑。这是人类与生俱来的求生本能。\n\n极度恐怖模式刻意放大了这种本能反应。它能带来刺激，也可能带来消耗。请把这种刺激理解为「过山车」——对喜欢的人是一种快感，对不适应的人是一种折磨。选择权在你。\n\n四、哪些人绝不应该开启\n\n如果你符合以下任何一条，请立即关闭本页，不要开启极度恐怖模式：\n\n1. 未满 14 周岁；\n2. 患有或曾被诊断患有心脏病、高血压、脑血管疾病；\n3. 患有癫痫，或对闪光、频闪敏感（光敏性癫痫患者尤其危险）；\n4. 患有严重焦虑、抑郁、创伤后应激障碍（PTSD）或其他精神心理障碍，且处于不稳定期；\n5. 处于怀孕、哺乳期，或近期有头部外伤、睡眠严重不足；\n6. 身边无人陪伴，且已知自己对恐怖内容会产生强烈生理反应。\n\n五、关于未成年人\n\n如果你已满 14 周岁但尚未成年（不满 18 周岁），请在监护人知情并同意的前提下开启极度恐怖模式。请先让一位成年人阅读本声明，并确认你的身体状况和心理状态适合接受这种强度的刺激。\n\n未成年人自控力和风险判断能力尚在发育之中，更容易被沉浸式恐怖体验影响。请务必量力而行，感到任何不适，立即停止并寻求身边成年人的帮助。\n\n六、开启前你应做的准备\n\n如果确认自己不属于上述任何一类人群，仍建议你在开启之前做好以下准备：\n\n确保自己处于明亮、通风、安全的环境中；确保身边有人，或至少在开启前告知他人你的位置；佩戴耳机时控制音量，避免突然的高分贝惊吓；控制单次游玩时长，感到不适立即停止，不要逞强；不要在深夜、酒后、服药后或情绪极端时开启。\n\n七、游玩中的自我观察\n\n在游玩过程中，请随时留意自己的身体信号：如果出现持续的胸闷、呼吸困难、强烈的心悸、眼前发黑、眩晕、恶心、无法控制的发抖，或者感到自己「分不清游戏和现实」，请立刻停止游戏，关闭本页，走到明亮通风的地方，做几次深呼吸，并寻求帮助。\n\n这些信号说明你的身体已经超出了能承受的范围，继续下去没有任何意义，也不值得。\n\n八、你的权利与游戏的边界\n\n《雾港》是一款虚构的恐怖文字游戏。其中的所有人物、地点、事件均为虚构，与任何真实的人或事无关。\n\n极度恐怖模式提供的只是「模拟的恐惧」。它无法、也不会对你造成任何实质性的身体伤害。你随时可以按下 ESC 暂停、退出游戏、关闭网页，或回到「设置」把恐怖程度调回「标准」或「温和」。\n\n你的恐惧是暂时的，主动权始终握在你自己手里。\n\n九、结束之后\n\n游戏结束后，如果你感到不安，可以做这些事：关掉屏幕，看一眼窗外真实的世界；开灯，让房间亮起来；喝一杯温水；和身边的人说说话；出门走一走，呼吸新鲜空气。\n\n记住：雾港不存在。纸人不存在。那些让你害怕的画面，都只是屏幕上的几行字和几张图。它们伤不到你，也带不走你。\n\n十、确认\n\n我已完整阅读以上全部内容，并确认：我已年满 14 周岁；我不属于上述「绝不应该开启」的任何一类人群；我已做好充分的心理准备，自愿开启极度恐怖模式，并愿意自行承担由此产生的一切不适。';
+
+var HORROR_LABEL = { mild:'温和', normal:'标准', extreme:'极度恐怖' };
+
+/* ================= 状态 ================= */
+var SAVE_KEY = 'wugang5.save.v1';
+var FIRST_KEY = 'wugang5.seenDisclaimer.v1';
+function defSettings(){ return { bg:'door', bgm:false, sfx:true, speed:30, glitchType:true, shake:true, noFx:false, fogIcon:true, horror:'normal' }; }
+function defSave(){ return { v:1, endings:{}, settings:defSettings() }; }
+var S = defSave();
+var saveOK = true;
+function loadSave(){ try{ var r = localStorage.getItem(SAVE_KEY); if(r){ var o = JSON.parse(r); S = Object.assign(defSave(), o); S.settings = Object.assign(defSettings(), o.settings||{}); } }catch(e){ saveOK = false; } }
+function writeSave(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){ saveOK = false; } }
+function seenDisclaimer(){ try{ return localStorage.getItem(FIRST_KEY)==='1'; }catch(e){ return true; } }
+function markSeen(){ try{ localStorage.setItem(FIRST_KEY,'1'); }catch(e){} }
+
+/* 本局运行态 */
+var RUN = { node:null, path:[], ended:false, horrorAtStart:'normal' };
+
+/* ================= 打字机 ================= */
+var GL = "▦▩▨▧▤▒░▓█▁▂▃▄▅▆▇▉▊";
+var T = { q:[], cur:null, timer:null, hold:null };
+function speed(){ var sp = S.settings.speed; if(S.settings.noFx || sp === 0) return 0; return sp || 30; }
+function tAdd(el, text, done){ T.q.push({ el:el, text:String(text||''), i:0, done:done||null }); if(!T.cur) pump(); }
+function tClear(){ if(T.timer) clearInterval(T.timer); if(T.hold) clearTimeout(T.hold); T.timer=null; T.hold=null; T.cur=null; T.q=[]; }
+function renderCur(){
+  var c = T.cur; if(!c) return;
+  var done = c.text.slice(0, c.i);
+  var rest = c.text.slice(c.i);
+  var el = c.el;
+  el.innerHTML = '';
+  el.appendChild(document.createTextNode(done));
+  if(rest.length && S.settings.glitchType && S.settings.horror!=='mild'){
+    var g = document.createElement('span'); g.className='glit';
+    g.textContent = rest[0] === '\n' ? '\n' : GL[Math.floor(Math.random()*GL.length)];
+    el.appendChild(g);
+  }
+  var s = document.createElement('span'); s.className='cur'; s.textContent=' '; el.appendChild(s);
+}
+function pump(){
+  if(T.cur || !T.q.length) return;
+  T.cur = T.q.shift(); T.cur.i = 0; renderCur();
+  var sp = speed();
+  if(sp <= 0){ T.cur.i = T.cur.text.length; finishCur(); return; }
+  T.timer = setInterval(function(){
+    if(!T.cur) return;
+    T.cur.i++;
+    if(T.cur.i >= T.cur.text.length){ clearInterval(T.timer); T.timer=null; finishCur(); return; }
+    renderCur(); tick();
+  }, sp);
+}
+function finishCur(){ var c=T.cur; if(!c) return; if(c.el){ c.el.innerHTML=''; c.el.appendChild(document.createTextNode(c.text)); } T.cur=null; if(c.done){ try{c.done();}catch(e){} } T.hold=setTimeout(function(){ T.hold=null; pump(); }, S.settings.noFx?0:110); }
+function skipType(){ if(T.cur){ if(T.timer){ clearInterval(T.timer); T.timer=null; } T.cur.i=T.cur.text.length; finishCur(); return true; } if(T.hold){ clearTimeout(T.hold); T.hold=null; pump(); return true; } return false; }
+
+/* ================= 音效 ================= */
+var AC = null;
+function ac(){ try{ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); return AC; }catch(e){ return null; } }
+function beep(f,d){ try{ var a=ac(); if(!a) return; var o=a.createOscillator(), g=a.createGain(); o.frequency.value=f; o.type='square'; g.gain.value=.012; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+d); }catch(e){} }
+function tick(){ if(S.settings.sfx && S.settings.horror!=='mild') beep(1400, .006); }
+function scream(intensity){
+  if(S.settings.horror==='mild' || S.settings.noFx) return;
+  try{
+    var a = ac(); if(!a) return;
+    var dur = intensity>=2 ? 0.85 : 0.5;
+    var buf = a.createBuffer(1, Math.floor(a.sampleRate*dur), a.sampleRate);
+    var data = buf.getChannelData(0);
+    for(var i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/data.length, 2);
+    var src = a.createBufferSource(); src.buffer = buf;
+    var g = a.createGain(); g.gain.value = intensity>=2 ? 0.45 : 0.28;
+    var f = a.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1700; f.Q.value=0.7;
+    src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+    var o = a.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(700, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1900, a.currentTime+dur*0.5);
+    var g2 = a.createGain(); g2.gain.setValueAtTime(0.22, a.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001, a.currentTime+dur);
+    o.connect(g2); g2.connect(a.destination); o.start(); o.stop(a.currentTime+dur);
+  }catch(e){}
+}
+
+/* ================= 层与视觉 ================= */
+function layer(id){ var ls=document.querySelectorAll('.layer'); for(var i=0;i<ls.length;i++) ls[i].classList.remove('on'); if(id) document.getElementById(id).classList.add('on'); }
+function layerOn(id){ return document.getElementById(id).classList.contains('on'); }
+function fogLevel(){ return Math.min(RUN.path.length + 1, 3); }
+function horrorOn(){ return S.settings.horror !== 'mild'; }
+function extremeOn(){ return S.settings.horror === 'extreme'; }
+function applyVisual(){
+  var b = document.getElementById('bg');
+  b.setAttribute('data-mode', S.settings.bg || 'none');
+  document.body.classList.toggle('deep', fogLevel()>=3 || layerOn('ending'));
+  document.body.classList.toggle('blood', layerOn('ending'));
+  document.body.classList.toggle('extreme', extremeOn());
+  var f = document.getElementById('fogIcon');
+  f.style.display = (S.settings.fogIcon && layerOn('story')) ? 'block' : 'none';
+  f.textContent = '雾 ' + fogLevel();
+  var tag = document.getElementById('depthTag');
+  if(tag) tag.textContent = '第 ' + (RUN.path.length + 1) + ' 步';
+}
+function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){ el.classList.remove('on'); },1600); }
+
+/* ================= 突脸 ================= */
+var SCARE_FACES = ["assets/face_white.png", "assets/face_cracked.png"];
+function jumpScare(intensity){
+  if(!horrorOn() || S.settings.noFx) return;
+  var el = document.getElementById('scare');
+  var img = SCARE_FACES[Math.floor(Math.random()*SCARE_FACES.length)];
+  el.style.backgroundImage = "url('"+img+"')";
+  el.classList.remove('on'); void el.offsetWidth;
+  el.style.animation = 'none'; void el.offsetWidth;
+  el.style.animation = 'scare ' + (intensity>=2 ? 0.55 : 0.32) + 's';
+  el.classList.add('on');
+  scream(intensity);
+  document.getElementById('app').classList.add('shake-hard');
+  setTimeout(function(){ document.getElementById('app').classList.remove('shake-hard'); }, 420);
+  setTimeout(function(){ el.classList.remove('on'); }, intensity>=2 ? 900 : 600);
+}
+function flashFace(){ var el=document.getElementById('cross'); el.style.backgroundImage="url('assets/face_white.png')"; el.classList.add('on'); setTimeout(function(){ el.classList.remove('on'); }, 240); }
+/* 极度恐怖：随机微惊吓 */
+var EXTREME_T = null;
+function extremeTick(){
+  if(!extremeOn() || !layerOn('story') || RUN.ended) return;
+  if(Math.random() < 0.35) jumpScare(1);
+}
+function startExtremeTick(){ if(EXTREME_T) clearInterval(EXTREME_T); EXTREME_T = extremeOn() ? setInterval(extremeTick, 14000) : null; }
+
+/* ================= 主页 ================= */
+function refreshMenu(){
+  var lead=document.getElementById('menuLead'), stat=document.getElementById('menuStat');
+  lead.innerHTML=''; stat.innerHTML='';
+  tAdd(lead, '一步走错，就再也回不来了。');
+  var got = Object.keys(S.endings).length;
+  tAdd(stat, got>0 ? ('已收集 '+got+' / 48') : '还没有人走到过结局。');
+  applyVisual();
+}
+function showMenu(){ layer('menu'); refreshMenu(); }
+
+/* ================= 剧情 ================= */
+function startGame(){
+  RUN = { node: TREE_DATA.root, path: [], ended:false, horrorAtStart:S.settings.horror };
+  layer('story');
+  renderNode(TREE_DATA.root);
+  applyVisual();
+  startExtremeTick();
+}
+function renderNode(id){
+  var n = TREE_DATA.nodes[id];
+  if(!n) return;
+  var box = document.getElementById('storyText');
+  var opts = document.getElementById('opts');
+  box.innerHTML = ''; opts.innerHTML = '';
+  var p = document.createElement('p'); box.appendChild(p);
+  tAdd(p, n.text, function(){
+    if(n.game){ startMiniGame(id); }
+    else { revealChoices(n); }
+  });
+  applyVisual();
+}
+function revealChoices(n){
+  var opts = document.getElementById('opts');
+  opts.innerHTML = '';
+  n.choices.forEach(function(c, i){
+    var b = document.createElement('button'); b.className='opt';
+    b.style.opacity='0'; b.style.transform='translateY(8px)';
+    b.textContent = c.label;
+    opts.appendChild(b);
+    b.onclick = function(){ doChoice(c); };
+    setTimeout(function(){
+      b.style.transition='opacity .3s,transform .3s';
+      b.style.opacity='1'; b.style.transform='translateY(0)';
+    }, 80 + i*120);
+  });
+}
+function doChoice(c){
+  if(RUN.ended) return;
+  RUN.path.push(c.label);
+  if(c.to[0] === 'E'){ showEnding(c.to); }
+  else { renderNode(c.to); }
+}
+function showEnding(eId){
+  RUN.ended = true;
+  if(EXTREME_T){ clearInterval(EXTREME_T); EXTREME_T = null; }
+  var e = TREE_DATA.endings[eId];
+  var fresh = !S.endings[eId];
+  if(fresh) S.endings[eId] = { at: Date.now() };
+  writeSave();
+  layer('ending');
+  var no = document.getElementById('endNo'), path = document.getElementById('endPath'), box = document.getElementById('endText');
+  no.innerHTML=''; path.innerHTML=''; box.innerHTML='';
+  var got = Object.keys(S.endings).length;
+  tAdd(no, '—— 结局 ' + eId.slice(1) + '：' + e.name + '　·　已收集 ' + got + ' / 48');
+  path.textContent = '你的路径：' + RUN.path.join(' → ');
+  setTimeout(function(){ tAdd(box, e.text); }, 400);
+  var hor = document.getElementById('endHorror');
+  hor.textContent = '本局恐怖模式：' + HORROR_LABEL[RUN.horrorAtStart];
+  var ask = document.getElementById('endAsk'); ask.textContent = '';
+  if(RUN.horrorAtStart === 'extreme'){
+    setTimeout(function(){ tAdd(ask, '你还好吗？'); }, 1800);
+  }
+  if(fresh) toast('解锁了新结局。');
+  applyVisual();
+}
+
+/* ================= 小游戏 ================= */
+var GAME = { active:false, node:null, type:null, timer:null, count:0, target:0, pos:0, state:'', start:0, window:0 };
+function startMiniGame(nodeId){
+  var n = TREE_DATA.nodes[nodeId];
+  if(!n || !n.game) return;
+  var g = n.game;
+  GAME.active = true; GAME.node = nodeId; GAME.type = g.type;
+  var panel = document.getElementById('miniGame');
+  document.getElementById('mgTitle').textContent = g.title;
+  document.getElementById('mgHint').textContent = g.hint;
+  var bar = document.getElementById('mgBar');
+  var area = document.getElementById('mgArea');
+  var tap = document.getElementById('mgTap');
+  bar.innerHTML = '<div id="mgBarFill"></div>';
+  bar.style.display = 'block';
+  area.style.display = 'flex';
+  tap.style.display = 'block';
+  panel.classList.add('on');
+  if(g.type === 'mash') initMash(g);
+  else if(g.type === 'timing') initTiming(g);
+  else initReact(g);
+}
+function clearGame(){
+  if(GAME.timer){ clearInterval(GAME.timer); GAME.timer = null; }
+  if(GAME.timer2){ clearInterval(GAME.timer2); GAME.timer2 = null; }
+  if(GAME.timer3){ clearInterval(GAME.timer3); GAME.timer3 = null; }
+  GAME.active = false;
+  document.getElementById('miniGame').classList.remove('on');
+  document.getElementById('mgArea').onclick = null;
+  document.getElementById('mgTap').onclick = null;
+}
+function endMiniGame(success){
+  var n = TREE_DATA.nodes[GAME.node];
+  var g = n.game;
+  var idx = success ? 0 : 1;
+  if(n.choices && n.choices[idx]) RUN.path.push(n.choices[idx].label);
+  var eId = success ? g.success : g.fail;
+  clearGame();
+  if(!success && horrorOn()) jumpScare(2);
+  showEnding(eId);
+}
+/* mash：限时连点 */
+function initMash(g){
+  GAME.count = 0; GAME.target = 26; GAME.total = 3600;
+  var area = document.getElementById('mgArea');
+  area.innerHTML = '<div>猛点这里！</div><div class="mgText" id="mgNum">0 / ' + GAME.target + '</div>';
+  area.onclick = function(ev){ ev.stopPropagation(); GAME.count++; document.getElementById('mgNum').textContent = GAME.count + ' / ' + GAME.target; updateMashBar(); if(GAME.count >= GAME.target){ endMiniGame(true); } };
+  document.getElementById('mgTap').style.display = 'none';
+  var start = Date.now();
+  GAME.timer = setInterval(function(){
+    var el = Date.now() - start;
+    updateMashBar(el / GAME.total);
+    if(el >= GAME.total){ endMiniGame(GAME.count >= GAME.target); }
+  }, 50);
+}
+function updateMashBar(r){ var f = document.getElementById('mgBarFill'); if(f) f.style.width = Math.min(100, r*100) + '%'; }
+/* timing：指针进区间点击 */
+function initTiming(g){
+  GAME.pos = 0; GAME.min = 52; GAME.max = 70;
+  var bar = document.getElementById('mgBar');
+  bar.innerHTML = '<div id="mgBarFill" style="width:0"></div><div class="mgZone" style="left:52%;width:18%"></div><div class="mgNeedle" id="mgNeedle" style="left:0"></div>';
+  var area = document.getElementById('mgArea');
+  area.innerHTML = '<div>等指针进入亮色区间，<br>立刻按下按钮。</div>';
+  area.onclick = null; area.style.cursor = 'default';
+  var tap = document.getElementById('mgTap');
+  tap.style.display = 'block';
+  tap.textContent = '就是现在';
+  tap.onclick = function(ev){ ev.stopPropagation(); if(GAME.pos >= GAME.min && GAME.pos <= GAME.max) endMiniGame(true); else endMiniGame(false); };
+  GAME.timer = setInterval(function(){
+    GAME.pos += 2.6;
+    if(GAME.pos > 100) GAME.pos = 0;
+    var n = document.getElementById('mgNeedle'); if(n) n.style.left = GAME.pos + '%';
+  }, 28);
+}
+/* react：等闪现后点击闭眼 */
+function initReact(g){
+  GAME.state = 'wait';
+  var area = document.getElementById('mgArea');
+  area.innerHTML = '<div class="mgText">盯着它……<br><span style="font-size:13px;color:#8a7468">别眨眼</span></div>';
+  area.onclick = null; area.style.cursor = 'default';
+  var tap = document.getElementById('mgTap');
+  tap.style.display = 'block';
+  tap.textContent = '闭眼';
+  tap.onclick = function(ev){ ev.stopPropagation(); if(GAME.state === 'wait'){ endMiniGame(false); } else if(GAME.state === 'react'){ endMiniGame(true); } };
+  var delay = 1600 + Math.random()*2400;
+  GAME.timer = setTimeout(function(){
+    GAME.state = 'react';
+    area.innerHTML = '<div class="mgText" style="font-size:30px;color:#e03">闭眼！！</div>';
+    if(horrorOn()) jumpScare(1);
+    GAME.start = Date.now(); GAME.window = 750;
+    GAME.timer2 = setInterval(function(){
+      if(Date.now() - GAME.start > GAME.window){ endMiniGame(false); }
+    }, 50);
+  }, delay);
+}
+
+/* ================= 图鉴 ================= */
+function buildGallery(){
+  var stat=document.getElementById('galStat'), body=document.getElementById('galBody');
+  stat.innerHTML=''; body.innerHTML='';
+  var got = Object.keys(S.endings).length;
+  tAdd(stat, '已收集 ' + got + ' / 48');
+  GROUPS.forEach(function(g, gi){
+    var title=document.createElement('div'); title.className='grpTitle'; body.appendChild(title);
+    var gotG = g.ids.filter(function(id){ return !!S.endings[id]; }).length;
+    tAdd(title, g.name + ' · ' + gotG + '/' + g.ids.length);
+    var grid=document.createElement('div'); grid.className='grid'; body.appendChild(grid);
+    g.ids.forEach(function(id, i){
+      var e = TREE_DATA.endings[id];
+      var un = !!S.endings[id];
+      var c=document.createElement('div'); c.className='cell'+(un?' open':'');
+      c.textContent = un ? e.name : ('结局 '+id.slice(1)+'：■■■');
+      if(un) c.onclick = function(){ detail(e, id); };
+      grid.appendChild(c);
+      if(!S.settings.noFx){ c.style.opacity='0'; setTimeout(function(){ c.style.transition='opacity .3s'; c.style.opacity='1'; }, 60+gi*40+i*20); }
+    });
+  });
+}
+function detail(e, id){
+  var m=document.getElementById('modal');
+  document.getElementById('mdNo').textContent = '结局 ' + id.slice(1) + '：' + e.name;
+  document.getElementById('mdPath').textContent = '如何进入：' + e.path.join(' → ');
+  document.getElementById('mdText').textContent = e.text;
+  m.classList.add('on');
+}
+
+/* ================= 设置 ================= */
+var SET_DEF = [
+  ['bg','背景','selectBg'],['bgm','背景音乐','bool'],['sfx','打字音效','bool'],['speed','打字速度','select'],
+  ['horror','恐怖程度','selectHorror'],['glitchType','乱码打字（未打出的字显示乱码）','bool'],['shake','故障动效','bool'],['noFx','减少动态效果','bool'],['fogIcon','雾浓度指示器','bool']
+];
+function buildSettings(){
+  var box=document.getElementById('setItems'); box.innerHTML='';
+  SET_DEF.forEach(function(row){
+    var key=row[0], label=row[1], type=row[2], l=document.createElement('label'); l.className='chk'; box.appendChild(l);
+    var span=document.createElement('span'); span.textContent=label; l.appendChild(span);
+    if(type==='bool'){
+      var inp=document.createElement('input'); inp.type='checkbox'; inp.checked=!!S.settings[key]; l.appendChild(inp);
+      inp.onchange=function(){ S.settings[key]=inp.checked; writeSave(); applySettings(); applyVisual(); };
+    } else if(type==='selectBg'){
+      var sel=document.createElement('select'); l.appendChild(sel);
+      [['无（黑底）','none'],['红门','door'],['故障图','glitch']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; sel.appendChild(op); });
+      sel.value=S.settings.bg; sel.onchange=function(){ S.settings.bg=sel.value; writeSave(); applyVisual(); };
+    } else if(type==='selectHorror'){
+      var selh=document.createElement('select'); l.appendChild(selh);
+      [['温和（无惊吓）','mild'],['标准（有突脸）','normal'],['极度恐怖','extreme']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; selh.appendChild(op); });
+      selh.value=S.settings.horror;
+      selh.onchange=function(){
+        if(selh.value==='extreme'){ selh.value = S.settings.horror; openExtreme(); return; }
+        S.settings.horror=selh.value; writeSave(); applyVisual(); startExtremeTick();
+      };
+    } else {
+      var sel2=document.createElement('select'); l.appendChild(sel2);
+      [['慢','60'],['正常','30'],['快','15'],['瞬时','0']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; sel2.appendChild(op); });
+      sel2.value=String(S.settings.speed); sel2.onchange=function(){ S.settings.speed=parseInt(sel2.value,10); writeSave(); previewSpeed(); };
+    }
+  });
+  // 极度恐怖独立按钮
+  var extWrap = document.createElement('div'); extWrap.style.padding='6px 0';
+  var extBtn = document.createElement('button'); extBtn.className='btn danger2 sm';
+  extBtn.textContent = extremeOn() ? '极度恐怖模式：已开启（点击重看声明）' : '开启极度恐怖模式';
+  extBtn.onclick = openExtreme;
+  extWrap.appendChild(extBtn); box.appendChild(extWrap);
+}
+function previewSpeed(){ var l=document.createElement('label'); l.className='chk'; var s=document.createElement('span'); s.textContent='雾在变浓。'; l.appendChild(s); document.getElementById('setItems').appendChild(l); tAdd(s,'雾在变浓。'); }
+function applySettings(){
+  document.body.classList.toggle('no-fx', S.settings.noFx);
+  var bgm=document.getElementById('audio');
+  if(S.settings.bgm){ if(!bgm){ bgm=document.createElement('audio'); bgm.id='audio'; bgm.src='assets/bgm.mp3'; bgm.loop=true; bgm.volume=.35; document.getElementById('app').appendChild(bgm); } if(bgm.paused) bgm.play().catch(function(){}); }
+  else if(bgm) bgm.pause();
+}
+
+/* ================= 极度恐怖开启流程 ================= */
+function openExtreme(){
+  var el = document.getElementById('extreme');
+  document.getElementById('extScroll').innerHTML = '';
+  document.getElementById('extScroll').textContent = EXTREME_TEXT;
+  document.getElementById('extCheck').checked = false;
+  var confirm = document.getElementById('extConfirm'); confirm.disabled = true;
+  el.classList.add('on');
+}
+function closeExtreme(){ document.getElementById('extreme').classList.remove('on'); }
+function confirmExtreme(){
+  S.settings.horror = 'extreme';
+  writeSave(); applyVisual(); startExtremeTick();
+  closeExtreme();
+  toast('已开启极度恐怖模式');
+  tryFullscreen();
+  buildSettings();
+}
+
+/* ================= 首次免责声明 ================= */
+function checkDisclaimer(){
+  if(seenDisclaimer()) return;
+  var el = document.getElementById('disclaimer');
+  var txt = document.getElementById('discText');
+  txt.innerHTML = '';
+  txt.textContent = DISCLAIMER_TEXT;
+  el.classList.add('on');
+}
+
+/* ================= 全屏 ================= */
+function toggleFullscreen(){
+  if(document.fullscreenElement){ if(document.exitFullscreen) document.exitFullscreen().catch(function(){}); }
+  else { var el=document.documentElement; if(el.requestFullscreen) el.requestFullscreen().catch(function(){ toast('浏览器拒绝了全屏请求，可按 F11 手动全屏'); }); }
+}
+function tryFullscreen(){
+  if(!document.fullscreenElement){ var el=document.documentElement; if(el.requestFullscreen) el.requestFullscreen().catch(function(){}); }
+}
+
+/* ================= 关于 / 暂停 ================= */
+function showAbout(){ layer('aboutLayer'); var el=document.getElementById('aboutText'); el.innerHTML=''; typeParas(el, ABOUT_TEXT); }
+function typeParas(el, txt){ var ps = String(txt||'').split(/\n\n+/).filter(Boolean); el.innerHTML=''; ps.forEach(function(p){ var d=document.createElement('p'); d.style.marginBottom='10px'; el.appendChild(d); tAdd(d, p); }); }
+function openPause(){ if(!layerOn('story') || RUN.ended) return; document.getElementById('pause').classList.add('on'); }
+function closePause(){ document.getElementById('pause').classList.remove('on'); }
+function exitToMenu(){ document.getElementById('pause').classList.remove('on'); tClear(); clearGame(); showMenu(); }
+
+/* ================= 事件 ================= */
+function tap(id, fn){ document.getElementById(id).addEventListener('click', function(ev){ ev.stopPropagation(); if(GAME.active) return; if(T.cur||T.hold){ skipType(); return; } fn(); }); }
+tap('btnStart', function(){ startGame(); });
+tap('btnGallery', function(){ layer('gallery'); buildGallery(); });
+tap('galBack', function(){ layer('menu'); refreshMenu(); });
+tap('btnSet', function(){ layer('setLayer'); buildSettings(); });
+tap('setBack', function(){ layer('menu'); refreshMenu(); });
+tap('setFull', toggleFullscreen);
+tap('footAbout', showAbout);
+tap('footFull', toggleFullscreen);
+tap('aboutBack', function(){ layer('menu'); refreshMenu(); });
+tap('endHome', function(){ layer('menu'); refreshMenu(); });
+tap('endGal', function(){ layer('gallery'); buildGallery(); });
+tap('modalClose', function(){ document.getElementById('modal').classList.remove('on'); });
+tap('pauseResume', closePause);
+tap('pauseExit', exitToMenu);
+tap('discSet', function(){ document.getElementById('disclaimer').classList.remove('on'); markSeen(); layer('setLayer'); buildSettings(); });
+tap('discStart', function(){ document.getElementById('disclaimer').classList.remove('on'); markSeen(); startGame(); });
+tap('extCancel', closeExtreme);
+tap('extConfirm', confirmExtreme);
+
+document.getElementById('extScroll').addEventListener('scroll', function(){
+  var el = this;
+  var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+  if(atBottom) document.getElementById('extAgree').style.opacity = '1';
+});
+document.getElementById('extAgree').style.opacity = '.4';
+document.getElementById('extCheck').addEventListener('change', function(){
+  document.getElementById('extConfirm').disabled = !this.checked;
+});
+
+document.addEventListener('click', function(e){
+  if(GAME.active) return;
+  var t=e.target;
+  if(t.tagName==='BUTTON'||t.tagName==='INPUT'||t.tagName==='SELECT'||t.closest('.cell')) return;
+  if(T.cur||T.hold) skipType();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key===' '||e.key==='Enter'){ var tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea'||tag==='select') return; if(GAME.active) return; e.preventDefault(); skipType(); }
+  if(e.key==='Escape'){ if(document.getElementById('extreme').classList.contains('on')){ closeExtreme(); return; } if(document.getElementById('pause').classList.contains('on')) closePause(); else openPause(); }
+});
+
+/* ================= 启动 ================= */
+loadSave(); applySettings(); applyVisual(); showMenu(); checkDisclaimer();
+(function(){
+  var intro=document.getElementById('intro'), done=false;
+  function enter(){ if(done) return; done=true; intro.classList.add('off'); flashFace(); }
+  intro.addEventListener('click', enter);
+  setTimeout(enter, 3600);
+})();
+</script>
+</body>
+</html>
