@@ -7,6 +7,8 @@
 
 ## 在线游玩
 
+[https://czy-cmd.github.io/wugang/](https://czy-cmd.github.io/wugang/)
+
 ```
 https://czy-cmd.github.io/wugang/
 ```
