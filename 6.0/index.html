@@ -214,7 +214,10 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
 #timeline{position:absolute;z-index:8;background:rgba(12,8,7,.92);border:1px solid rgba(150,80,70,.35);
  overflow:auto;display:none;padding:12px 14px}
 #timeline.on{display:block}
-#timeline .tlTitle{font-size:12px;letter-spacing:3px;color:#b98a78;margin-bottom:8px}
+#timeline .tlTitle{font-size:12px;letter-spacing:3px;color:#b98a78;margin-bottom:8px;cursor:move;user-select:none;-webkit-user-select:none;touch-action:none}
+#timeline .tlTitle .tlGrip{opacity:.55;margin-right:4px;font-size:11px}
+#timeline.dragging{opacity:.92}
+#timeline .tlTitle .tlHint{font-size:10px;letter-spacing:1px;color:#6d5a50;margin-left:6px}
 #timeline .tlStep{font-size:12px;letter-spacing:1px;color:#c4b5a6;line-height:1.9;margin:2px 0}
 #timeline .tlStep .tlIdx{color:#8a6a5a;margin-right:6px}
 #timeline .tlStep .tlChosen{color:#e0c8b8}
@@ -224,6 +227,7 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
 /* bottom 统一抬到选项按钮区域上方（约 220px），避免时间线浮层压住选项按钮 */
 #timeline.pos-bottom{left:20px;right:20px;bottom:220px;max-height:34vh;border-radius:8px}
 #timeline.pos-side{left:12px;top:60px;bottom:220px;width:200px;border-radius:8px}
+#timeline.pos-side-right{right:12px;top:60px;bottom:220px;width:200px;border-radius:8px}
 #timeline.pos-line{left:20px;right:20px;bottom:220px;padding:6px 12px;background:rgba(12,8,7,.55)}
 #timeline.pos-line .tlTitle{display:inline;margin-right:10px}
 #timeline.pos-line .tlStep{display:inline;margin:0 8px}
@@ -231,6 +235,14 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
 #btnTimeline{position:absolute;right:20px;bottom:14px;z-index:8;font-size:12px;letter-spacing:2px;color:#9a7a6a;
  background:rgba(20,12,10,.8);border:1px solid rgba(150,80,70,.4);padding:6px 14px;cursor:pointer;font-family:inherit;display:none}
 #btnTimeline:hover{color:#e0c8b8}
+/* 兑换码 */
+.redeemBox{padding:10px 0;border-top:1px solid rgba(150,80,70,.25);margin-top:8px}
+.redeemTitle{font-size:13px;letter-spacing:2px;color:#d0a898;margin-bottom:8px}
+.redeemRow{display:flex;gap:8px;align-items:center}
+.redeemInput{flex:1;min-width:0;background:rgba(20,12,10,.8);border:1px solid rgba(150,80,70,.4);color:#e0c8b8;padding:8px 10px;font-family:inherit;font-size:13px;letter-spacing:1px;border-radius:2px}
+.redeemInput::placeholder{color:#6d5a50}
+.redeemHint{margin-top:8px;font-size:11px;color:#8a6a5a;letter-spacing:1px;line-height:1.8}
+.redeemToggle{margin-top:6px;display:inline-block;font-size:11px;color:#9a7a6a;cursor:pointer;letter-spacing:1px;text-decoration:underline}
 @media(max-width:420px){h1{font-size:30px}.grid{grid-template-columns:repeat(4,1fr)}#storyText{font-size:15px}#timeline.pos-side{width:160px}}
 </style>
 </head>
@@ -253,7 +265,7 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
         style="animation:write 2.6s ease forwards;transform:skewX(-14deg);transform-box:fill-box;transform-origin:center">雾港</text>
       <style>@keyframes write{to{stroke-dashoffset:0}}</style>
     </svg>
-    <div class="subtitle" id="introSub">v6.0-snapshot 2</div>
+    <div class="subtitle" id="introSub">v6.0-snapshot 3</div>
     <div class="tip">点击进入</div>
   </div>
 
@@ -285,7 +297,7 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
   </div>
 
   <!-- 时间线 -->
-  <div id="timeline"><div class="tlTitle">时间线</div><div id="tlBody"></div></div>
+  <div id="timeline"><div class="tlTitle" id="tlDrag"><span class="tlGrip">⠿</span>时间线<span class="tlHint">拖动移动 · 双击复位</span></div><div id="tlBody"></div></div>
   <button id="btnTimeline">查看时间线</button>
 
   <!-- 结局 -->
@@ -526,7 +538,7 @@ var ABYSS_TEXT = [
 var ABOUT_ROWS = [
   ['游戏名称','雾港'],
   ['作者','czy'],
-  ['版本','6.0-snapshot 2'],
+  ['版本','6.0-snapshot 3'],
   ['类型','文字冒险 · 恐怖 · 多结局'],
   ['适龄提示','18+ · 含心理恐怖与突发惊吓'],
   ['平台','网页 · 桌面 / 移动端浏览器'],
@@ -541,7 +553,7 @@ var ABOUT_SECTIONS = [
 ];
 
 /* ================= 状态 ================= */
-function defSettings(){ return { bg:'door', bgm:false, sfx:true, speed:30, glitchType:true, shake:true, noFx:false, fogIcon:true, horror:'normal', sideBranches:false, phantomMode:'on', timelinePos:'bottom', timelineAuto:false, treeView:false }; }
+function defSettings(){ return { bg:'door', bgm:false, sfx:true, speed:30, glitchType:true, shake:true, noFx:false, fogIcon:true, horror:'normal', sideBranches:false, phantomMode:'on', timelinePos:'bottom', timelineAuto:false, treeView:false, timelineCustom:null }; }
 function defSave(){ return { v:2, endings:{}, settings:defSettings() }; }
 var S = defSave();
 var saveOK = true;
@@ -1145,8 +1157,63 @@ function initStead(g){
 
 /* ================= 时间线 ================= */
 function timelinePosClass(){
-  if(S.settings.treeView) return 'pos-side';
+  if(S.settings.treeView) return 'pos-side-right';
   return 'pos-' + (S.settings.timelinePos || 'bottom');
+}
+function applyTimelinePos(){
+  var tl = document.getElementById('timeline');
+  tl.className = timelinePosClass();
+  tl.style.left=''; tl.style.top=''; tl.style.right=''; tl.style.bottom=''; tl.style.width=''; tl.style.height='';
+  var c = S.settings.timelineCustom;
+  if(c && c.left != null && c.top != null){
+    tl.style.left = c.left + 'px';
+    tl.style.top = c.top + 'px';
+    if(c.width) tl.style.width = c.width + 'px';
+    if(c.height) tl.style.height = c.height + 'px';
+    tl.style.right = 'auto';
+    tl.style.bottom = 'auto';
+  }
+}
+function initTimelineDrag(){
+  var tl = document.getElementById('timeline');
+  var handle = document.getElementById('tlDrag') || tl;
+  var dragging = false, sx=0, sy=0, ox=0, oy=0;
+  function startDrag(x, y){
+    if(GAME.active) return;
+    var r = tl.getBoundingClientRect();
+    sx = x; sy = y; ox = r.left; oy = r.top;
+    tl.style.width = r.width + 'px';
+    tl.style.height = r.height + 'px';
+    tl.style.left = ox + 'px';
+    tl.style.top = oy + 'px';
+    tl.style.right = 'auto';
+    tl.style.bottom = 'auto';
+    tl.classList.add('dragging');
+    dragging = true;
+  }
+  function moveDrag(x, y){
+    if(!dragging) return;
+    var nx = ox + (x - sx), ny = oy + (y - sy);
+    nx = Math.max(0, Math.min(nx, window.innerWidth - 60));
+    ny = Math.max(0, Math.min(ny, window.innerHeight - 50));
+    tl.style.left = nx + 'px';
+    tl.style.top = ny + 'px';
+  }
+  function endDrag(){
+    if(!dragging) return;
+    dragging = false;
+    tl.classList.remove('dragging');
+    S.settings.timelineCustom = { left: parseFloat(tl.style.left), top: parseFloat(tl.style.top), width: parseFloat(tl.style.width) || null, height: parseFloat(tl.style.height) || null };
+    writeSave();
+  }
+  handle.addEventListener('mousedown', function(e){ startDrag(e.clientX, e.clientY); e.preventDefault(); });
+  document.addEventListener('mousemove', function(e){ moveDrag(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', endDrag);
+  handle.addEventListener('touchstart', function(e){ var t=e.touches[0]; startDrag(t.clientX, t.clientY); e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchmove', function(e){ if(dragging){ var t=e.touches[0]; moveDrag(t.clientX, t.clientY); e.preventDefault(); } }, {passive:false});
+  document.addEventListener('touchend', endDrag);
+  // 双击标题栏复位到默认位置
+  handle.addEventListener('dblclick', function(){ S.settings.timelineCustom = null; writeSave(); applyTimelinePos(); });
 }
 function updateTimeline(){
   var tl = document.getElementById('timeline');
@@ -1155,7 +1222,7 @@ function updateTimeline(){
   var inStory = layerOn('story') && !RUN.ended;
   btn.style.display = (inStory && !S.settings.timelineAuto) ? 'block' : 'none';
   if(!inStory) hideTimeline();
-  tl.className = timelinePosClass();
+  applyTimelinePos();
   var body = document.getElementById('tlBody');
   body.innerHTML = '';
   if(S.settings.treeView){
@@ -1337,6 +1404,49 @@ function detailHidden(id){
   m.classList.add('on');
 }
 
+/* ================= 兑换码 ================= */
+var REDEEM_CODES = [
+  { key:'白灯笼', alias:['bdl','baidenglong','white'], name:'全部「白灯笼」结局', ids:function(){ return GROUPS[0]?GROUPS[0].ids:[]; } },
+  { key:'义庄',   alias:['yz','yizhuang'], name:'全部「义庄」结局', ids:function(){ return GROUPS[1]?GROUPS[1].ids:[]; } },
+  { key:'渡口',   alias:['dk','dukou'], name:'全部「渡口」结局', ids:function(){ return GROUPS[2]?GROUPS[2].ids:[]; } },
+  { key:'旁支',   alias:['side','pz'], name:'全部旁支结局', ids:function(){ return SIDE_IDS; } },
+  { key:'隐藏',   alias:['hidden','yc'], name:'隐藏结局', ids:function(){ return HIDDEN_IDS; } },
+  { key:'全部',   alias:['all','qb'], name:'全部结局（含旁支）', ids:function(){ return Object.keys(TREE.endings).concat(SIDE_IDS); } },
+  { key:'雾港',   alias:['wugang'], name:'全部结局（含隐藏）', ids:function(){ return Object.keys(TREE.endings).concat(SIDE_IDS).concat(HIDDEN_IDS); } }
+];
+function redeemCode(input){
+  var code = String(input||'').trim().toLowerCase();
+  if(!code){ toast('请输入兑换码'); return; }
+  var hit = null;
+  for(var i=0;i<REDEEM_CODES.length;i++){
+    var c = REDEEM_CODES[i];
+    var keys = [c.key.toLowerCase()].concat(c.alias);
+    if(keys.indexOf(code) >= 0){ hit = c; break; }
+  }
+  if(!hit){ toast('兑换码无效'); return; }
+  var ids = hit.ids();
+  var n = 0;
+  for(var j=0;j<ids.length;j++){ if(!S.endings[ids[j]]){ S.endings[ids[j]] = { at: Date.now() }; n++; } }
+  writeSave();
+  if(n > 0){ toast('已解锁 ' + hit.name + '（+'+n+'）'); }
+  else { toast(hit.name + '：都已解锁过了'); }
+}
+function buildRedeemUI(box){
+  var wrap = document.createElement('div'); wrap.className='redeemBox';
+  var t = document.createElement('div'); t.className='redeemTitle'; t.textContent='兑换码'; wrap.appendChild(t);
+  var row = document.createElement('div'); row.className='redeemRow';
+  var inp = document.createElement('input'); inp.type='text'; inp.className='redeemInput'; inp.placeholder='输入兑换码'; inp.id='redeemInput';
+  var btn = document.createElement('button'); btn.className='btn sm'; btn.textContent='兑换'; btn.id='redeemBtn';
+  btn.onclick = function(){ redeemCode(inp.value); inp.value=''; };
+  row.appendChild(inp); row.appendChild(btn); wrap.appendChild(row);
+  var hint = document.createElement('div'); hint.className='redeemHint'; hint.id='redeemHint'; hint.style.display='none';
+  hint.textContent = '可用：' + REDEEM_CODES.map(function(c){ return c.key; }).join('　');
+  wrap.appendChild(hint);
+  var toggle = document.createElement('span'); toggle.className='redeemToggle'; toggle.id='redeemToggle'; toggle.textContent='查看可用兑换码';
+  toggle.onclick = function(){ var h=document.getElementById('redeemHint'); if(h.style.display==='none'){ h.style.display='block'; this.textContent='收起'; } else { h.style.display='none'; this.textContent='查看可用兑换码'; } };
+  wrap.appendChild(toggle); box.appendChild(wrap);
+}
+
 /* ================= 设置 ================= */
 var SET_DEF = [
   ['bg','背景','selectBg'],['bgm','背景音乐','bool'],['sfx','打字音效','bool'],['speed','打字速度','select'],
@@ -1399,6 +1509,7 @@ function buildSettings(){
   extBtn.textContent = abyssOn() ? '关闭惧渊临境（需连点 3 次）' : '开启惧渊临境';
   extBtn.onclick = abyssOn() ? closeAbyss : openAbyss;
   extWrap.appendChild(extBtn); box.appendChild(extWrap);
+  buildRedeemUI(box);
 }
 /* 惧渊临境：降级被怪物阻难 */
 var MONSTER_TAUNTS = ['它们不让……','还差一点……','你逃不掉的。','别碰那个。','已经来不及了。','它们在看。'];
@@ -1583,7 +1694,7 @@ document.addEventListener('keydown', function(e){
 });
 
 /* ================= 启动 ================= */
-loadSave(); applySettings(); applyVisual(); showMenu(); checkDisclaimer(); startHorrorTick();
+loadSave(); applySettings(); applyVisual(); showMenu(); checkDisclaimer(); startHorrorTick(); initTimelineDrag();
 (function(){
   var intro=document.getElementById('intro'), done=false;
   function enter(){ if(done) return; done=true; intro.classList.add('off'); flashFace(); }
