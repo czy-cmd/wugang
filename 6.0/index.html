@@ -221,9 +221,10 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
 #timeline .tlStep .tlUnchosen{color:#6d5f5f}
 #timeline .tlBranch{color:#7a6a60;font-size:11px}
 /* 时间线位置：下方横向滚动 / 侧边竖排 / 底部细线 */
-#timeline.pos-bottom{left:20px;right:20px;bottom:90px;max-height:34vh;border-radius:8px}
-#timeline.pos-side{left:12px;top:60px;bottom:80px;width:200px;border-radius:8px}
-#timeline.pos-line{left:20px;right:20px;bottom:16px;padding:6px 12px;background:rgba(12,8,7,.55)}
+/* bottom 统一抬到选项按钮区域上方（约 220px），避免时间线浮层压住选项按钮 */
+#timeline.pos-bottom{left:20px;right:20px;bottom:220px;max-height:34vh;border-radius:8px}
+#timeline.pos-side{left:12px;top:60px;bottom:220px;width:200px;border-radius:8px}
+#timeline.pos-line{left:20px;right:20px;bottom:220px;padding:6px 12px;background:rgba(12,8,7,.55)}
 #timeline.pos-line .tlTitle{display:inline;margin-right:10px}
 #timeline.pos-line .tlStep{display:inline;margin:0 8px}
 #timeline.pos-line .tlStep .tlUnchosen{display:none}
@@ -252,7 +253,7 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
         style="animation:write 2.6s ease forwards;transform:skewX(-14deg);transform-box:fill-box;transform-origin:center">雾港</text>
       <style>@keyframes write{to{stroke-dashoffset:0}}</style>
     </svg>
-    <div class="subtitle" id="introSub">v6.0-snapshot 1</div>
+    <div class="subtitle" id="introSub">v6.0-snapshot 2</div>
     <div class="tip">点击进入</div>
   </div>
 
@@ -525,7 +526,7 @@ var ABYSS_TEXT = [
 var ABOUT_ROWS = [
   ['游戏名称','雾港'],
   ['作者','czy'],
-  ['版本','6.0-snapshot 1'],
+  ['版本','6.0-snapshot 2'],
   ['类型','文字冒险 · 恐怖 · 多结局'],
   ['适龄提示','18+ · 含心理恐怖与突发惊吓'],
   ['平台','网页 · 桌面 / 移动端浏览器'],
