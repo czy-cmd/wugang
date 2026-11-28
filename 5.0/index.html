@@ -95,11 +95,11 @@ h2{font-size:22px;letter-spacing:6px;color:#d8c8b8;font-weight:400;text-align:ce
 #intro.off{opacity:0;pointer-events:none}
 #intro .tip{position:absolute;bottom:38px;font-size:12px;color:#5e5252;letter-spacing:3px;animation:tb 1.8s ease-in-out infinite}
 @keyframes tb{0%,100%{opacity:.35}50%{opacity:1}}
-#cross{position:fixed;inset:0;z-index:60;background:center/cover no-repeat;opacity:0;pointer-events:none}
+#cross{position:fixed;inset:0;z-index:60;background:center/contain no-repeat;opacity:0;pointer-events:none}
 #cross.on{animation:fl .24s}
 @keyframes fl{0%{opacity:0}50%{opacity:.85}100%{opacity:0}}
 /* 突脸 */
-#scare{position:fixed;inset:0;z-index:70;background:center/cover no-repeat #000;opacity:0;pointer-events:none}
+#scare{position:fixed;inset:0;z-index:70;background:center/contain no-repeat #000;opacity:0;pointer-events:none}
 #scare.on{animation:scare .5s}
 @keyframes scare{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.15)}35%{transform:scale(1)}100%{opacity:1}}
 .shake-hard{animation:shakeh .4s}
@@ -222,6 +222,7 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
       <div id="setBtns">
         <button class="btn sm" id="setBack">回主页</button>
         <button class="btn sm gray" id="setFull">全屏</button>
+        <button class="btn sm danger" id="setClear">删除存档</button>
       </div>
     </div>
   </div>
@@ -1603,7 +1604,7 @@ function applyVisual(){
 function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){ el.classList.remove('on'); },1600); }
 
 /* ================= 突脸 ================= */
-var SCARE_FACES = ["assets/face_white.png", "assets/face_cracked.png"];
+var SCARE_FACES = ["assets/face_white.png", "assets/face_cracked.png", "assets/scare_zombie.jpg", "assets/scare_nun.jpg", "assets/scare_mask.jpg"];
 function jumpScare(intensity){
   if(!horrorOn() || S.settings.noFx) return;
   var el = document.getElementById('scare');
@@ -1868,6 +1869,24 @@ function buildSettings(){
   extBtn.onclick = openExtreme;
   extWrap.appendChild(extBtn); box.appendChild(extWrap);
 }
+var clearArmed = false, clearTimer = null;
+function clearSave(){
+  var b = document.getElementById('setClear');
+  if(!clearArmed){
+    clearArmed = true;
+    b.textContent = '再点一次，彻底抹掉（不可恢复）';
+    if(clearTimer) clearTimeout(clearTimer);
+    clearTimer = setTimeout(function(){ clearArmed = false; b.textContent = '删除存档'; }, 3500);
+    return;
+  }
+  if(clearTimer) clearTimeout(clearTimer);
+  clearArmed = false;
+  b.textContent = '删除存档';
+  try{ localStorage.removeItem(SAVE_KEY); localStorage.removeItem(FIRST_KEY); }catch(e){}
+  S = defSave();
+  applyVisual(); applySettings(); buildSettings();
+  toast('存档已删除');
+}
 function previewSpeed(){ var l=document.createElement('label'); l.className='chk'; var s=document.createElement('span'); s.textContent='雾在变浓。'; l.appendChild(s); document.getElementById('setItems').appendChild(l); tAdd(s,'雾在变浓。'); }
 function applySettings(){
   document.body.classList.toggle('no-fx', S.settings.noFx);
@@ -1929,6 +1948,7 @@ tap('galBack', function(){ layer('menu'); refreshMenu(); });
 tap('btnSet', function(){ layer('setLayer'); buildSettings(); });
 tap('setBack', function(){ layer('menu'); refreshMenu(); });
 tap('setFull', toggleFullscreen);
+tap('setClear', clearSave);
 tap('footAbout', showAbout);
 tap('footFull', toggleFullscreen);
 tap('aboutBack', function(){ layer('menu'); refreshMenu(); });

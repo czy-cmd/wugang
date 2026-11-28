@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#070508">
+<title>雾港 6.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#070508;color:#d5cbc0;
+ font-family:"Songti SC","SimSun",Georgia,serif;-webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
+#app{position:relative;width:100%;height:100%;overflow:hidden}
+#bg{position:absolute;inset:0;background:#070508;transition:background 1.2s}
+#bg[data-mode="door"]{background:#070508 url('assets/red_door.png') center/cover no-repeat;opacity:.6}
+#bg[data-mode="glitch"]{background:#070508 url('assets/glitch_bg.jpg') center/cover no-repeat;opacity:.55}
+#fog{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 2s;
+ background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(90,10,10,.25) 100%)}
+body.deep #fog{opacity:1}
+#scan{position:absolute;inset:0;pointer-events:none;opacity:.12;
+ background:repeating-linear-gradient(0deg,rgba(0,0,0,.5) 0 1px,transparent 1px 3px)}
+#vign{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 180px 60px #000}
+body.extreme #vign{box-shadow:inset 0 0 260px 110px #000}
+body.hell #vign{box-shadow:inset 0 0 220px 90px #000}
+#noise{position:absolute;inset:0;pointer-events:none;opacity:.05;filter:contrast(140%)}
+body.no-fx #noise,body.no-fx #scan{display:none}
+.layer{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px;z-index:5}
+.layer.on{display:flex}
+.panel{width:min(560px,100%);display:flex;flex-direction:column;gap:14px}
+h1{font-size:40px;letter-spacing:14px;color:#efe6dc;font-weight:400;text-align:center;text-shadow:0 0 18px rgba(180,40,40,.35)}
+h2{font-size:22px;letter-spacing:6px;color:#d8c8b8;font-weight:400;text-align:center;margin-bottom:6px}
+.small{font-size:13px;color:#8d7f7f;letter-spacing:2px;text-align:center}
+.lead{font-size:15px;color:#b9a89b;letter-spacing:2px;text-align:center;min-height:22px}
+.stat{font-size:12px;color:#6d5f5f;letter-spacing:2px;text-align:center;min-height:18px}
+.btn{display:block;width:100%;padding:15px;background:rgba(28,18,16,.72);border:1px solid rgba(150,80,70,.35);
+ color:#e2d5c8;font-size:16px;letter-spacing:4px;font-family:inherit;cursor:pointer;text-align:center;
+ transition:background .18s,border-color .18s,color .18s}
+.btn:hover{background:rgba(50,28,24,.85);border-color:rgba(190,60,50,.7);color:#fff}
+.btn:active{transform:scale(.985)}
+.btn.gray{border-color:rgba(110,100,95,.3);color:#9b8b80}
+.btn.sm{width:auto;padding:9px 22px;font-size:13px;letter-spacing:2px}
+.btn.danger{border-color:rgba(160,50,50,.5);color:#c98a7a}
+.btn.danger2{border-color:rgba(220,40,30,.7);color:#e8b0a0;background:rgba(40,12,10,.8)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+#menuFoot{position:absolute;bottom:18px;font-size:11px;color:#5a4e4e;letter-spacing:3px;cursor:pointer;z-index:6}
+#menuFoot span:hover{color:#a88a7a}
+/* 标题容器 */
+.titleWrap{position:relative;display:inline-block}
+/* MC 风格提示词：每 10 秒随机出现在一个地方，5 秒后消失 */
+#splash{position:fixed;left:12%;top:20%;font-family:"SimSun",serif;font-size:14px;color:#FFFF55;
+ text-shadow:2px 2px 0 #3F3F00;transform:rotate(-8deg);letter-spacing:1px;z-index:40;opacity:0;
+ transition:opacity .6s, left .5s ease, top .5s ease;pointer-events:none;white-space:nowrap;max-width:70vw}
+#splash.on{opacity:1}
+/* 首玩「开始游戏」按钮飘散字：不固定，从按钮周围散出 */
+.startWrap{position:relative}
+.scatter{position:absolute;pointer-events:none;font-size:13px;color:#b08a7a;letter-spacing:2px;white-space:nowrap;
+ text-shadow:0 0 6px rgba(180,60,50,.4);animation:scatterFloat 2.6s ease-out forwards;opacity:0;z-index:6}
+@keyframes scatterFloat{
+ 0%{opacity:0;transform:translate(0,0) scale(.5)}
+ 14%{opacity:1;transform:translate(calc(var(--dx,0px)*.4),calc(var(--dy,0px)*.4)) scale(1)}
+ 100%{opacity:0;transform:translate(var(--dx,0px),var(--dy,0px)) scale(.72)}
+}
+/* 剧情 */
+#storyBox{position:absolute;inset:0;display:flex;flex-direction:column;z-index:6;padding:34px 30px 30px}
+#storyHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+#depthTag{font-size:11px;letter-spacing:3px;color:#7a6a60;border:1px solid rgba(120,90,80,.4);padding:4px 10px;border-radius:2px}
+#storyText{flex:1;overflow-y:auto;font-size:17px;line-height:2;letter-spacing:1px;color:#d5cbc0;
+ -webkit-mask-image:linear-gradient(#000 96%,transparent)}
+#storyText p{margin-bottom:14px}
+#opts{display:flex;flex-direction:column;gap:10px;padding-top:14px}
+.opt{display:block;width:100%;padding:14px;background:rgba(26,17,15,.7);border:1px solid rgba(150,80,70,.3);
+ color:#d8c9bb;font-size:15px;letter-spacing:2px;font-family:inherit;cursor:pointer;text-align:left;
+ transition:background .18s,border-color .18s}
+.opt:hover{background:rgba(60,30,25,.85);border-color:rgba(200,70,55,.7);color:#fff}
+.opt:active{transform:scale(.99)}
+.cur{display:inline-block;width:2px;height:1.1em;background:#c8a;vertical-align:-2px;margin-left:2px;animation:blink .9s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.glit{color:#b34a3a;text-shadow:0 0 6px rgba(200,40,30,.6)}
+/* 结局 */
+#endNo{font-size:20px;letter-spacing:4px;color:#e6d6c6;text-align:center;margin-bottom:4px}
+#endType{font-size:13px;letter-spacing:2px;text-align:center;margin-bottom:6px}
+#endPath{font-size:13px;letter-spacing:2px;color:#c07868;text-align:center;line-height:1.9;margin-bottom:16px}
+#endText{font-size:16px;line-height:2;letter-spacing:1px;color:#d5cbc0;text-align:center;min-height:60px}
+#endHorror{font-size:12px;letter-spacing:2px;color:#9a6a5a;text-align:center;margin-top:6px}
+#endAsk{font-size:14px;letter-spacing:2px;color:#c33;text-align:center;margin-top:14px;min-height:20px;text-shadow:0 0 8px rgba(200,0,0,.5)}
+/* 图鉴 */
+#gallery{overflow-y:auto;justify-content:flex-start;padding-top:40px}
+/* 结局图鉴：9 类 tab + 隐藏 tab，块状格子 */
+.galTabs{display:flex;gap:5px;width:min(560px,100%);flex-wrap:wrap}
+.galTab{flex:1 1 60px;padding:8px 3px;border-radius:8px 8px 0 0;border:1px solid rgba(150,80,70,.3);border-bottom:none;
+ background:rgba(24,16,14,.3);color:#7a6a6a;cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:1px;transition:all .15s}
+.galTab:hover{color:#b9a08a}
+.galTab.active{color:#e0d2c2;border-color:rgba(190,70,60,.5);background:rgba(44,24,20,.5)}
+#galGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(560px,100%)}
+.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;
+ background:rgba(24,16,14,.7);border:1px solid rgba(120,80,70,.3);color:#6d5f5f;font-size:12px;
+ letter-spacing:1px;cursor:pointer;padding:4px;line-height:1.4;transition:all .18s;border-radius:6px}
+.cell.open{color:#e0d2c2;border-color:rgba(190,70,60,.55);background:rgba(44,24,20,.7)}
+.cell:hover{border-color:rgba(200,70,55,.7)}
+.cell.hiddenE{border-color:rgba(150,20,20,.7);background:rgba(80,8,8,.55);color:#ff2a2a}
+.cell.hiddenE:hover{border-color:#ff2a2a;background:rgba(120,10,10,.6)}
+.scatter.doubt{color:#ff1a1a;text-shadow:0 0 8px rgba(255,0,0,.7);font-size:15px}
+.shake{animation:shk .5s}
+@keyframes shk{0%,100%{transform:translate(0,0)}20%{transform:translate(-8px,4px)}40%{transform:translate(6px,-6px)}60%{transform:translate(-5px,-3px)}80%{transform:translate(4px,5px)}}
+.lastChar{cursor:pointer;border-bottom:1px dashed rgba(200,70,55,.6)}
+.lastChar:hover{color:#ff5a4a}
+.secretHint{color:#8a7468;letter-spacing:2px}
+.secretCur{display:inline-block;animation:blink 1s step-end infinite;color:#e8dccd;font-size:18px}
+.doubtLine{color:#b08a7a;letter-spacing:1px;animation:dbIn .5s ease}
+@keyframes dbIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+/* 模态 */
+#modal{position:absolute;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:20;padding:30px}
+#modal.on{display:flex}
+#modalBox{width:min(520px,100%);background:#120c0b;border:1px solid rgba(170,70,60,.45);padding:26px;display:flex;flex-direction:column;gap:12px;max-height:88vh;overflow-y:auto}
+/* 暂停 */
+#pause{position:absolute;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;z-index:15;flex-direction:column;gap:16px}
+#pause.on{display:flex}
+/* 设置 */
+#setItems{width:min(520px,100%);display:flex;flex-direction:column;gap:4px}
+.chk{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid rgba(120,90,80,.18);gap:12px}
+.chk span{font-size:14px;letter-spacing:1px;color:#c4b5a6}
+.chk input[type=checkbox]{width:18px;height:18px;accent-color:#b04a3a;cursor:pointer}
+.chk select{background:#1a1210;color:#d5cbc0;border:1px solid rgba(150,80,70,.4);padding:6px 10px;font-family:inherit;font-size:13px;cursor:pointer}
+#setBtns{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+.extWarn{font-size:12px;letter-spacing:1px;color:#c0392b;line-height:1.8;border:1px solid rgba(190,40,30,.4);padding:10px;background:rgba(40,10,8,.5)}
+/* 极度恐怖：降级被阻难时面板躲避动画 */
+#setLayer .panel{transition:transform .12s}
+#setLayer .panel.dodge{transition:none}
+/* 关于（标准格式） */
+#aboutBox{width:min(520px,100%);text-align:left;font-size:14px;line-height:1.9;letter-spacing:1px;color:#bfae9e;overflow-y:auto;max-height:72vh}
+#aboutBox .arow{display:flex;border-bottom:1px solid rgba(120,90,80,.18);padding:7px 2px}
+#aboutBox .ak{flex:0 0 96px;color:#8d7a70;letter-spacing:2px}
+#aboutBox .av{flex:1;color:#cfbdaa}
+#aboutBox .sec{font-size:13px;letter-spacing:3px;color:#b98a78;margin:16px 0 4px;border-bottom:1px solid rgba(150,80,70,.3);padding-bottom:4px}
+/* 首屏手写 */
+#intro{position:absolute;inset:0;background:#070508;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;cursor:pointer;transition:opacity .6s}
+#intro.off{opacity:0;pointer-events:none}
+#intro .tip{position:absolute;bottom:38px;font-size:12px;color:#5e5252;letter-spacing:3px;animation:tb 1.8s ease-in-out infinite}
+#intro .subtitle{font-size:15px;letter-spacing:4px;color:#b9a89b;margin-top:10px;opacity:0;transition:opacity .5s}
+#intro .subtitle.on{opacity:1}
+#logoText{transition:fill .8s ease}
+@keyframes tb{0%,100%{opacity:.35}50%{opacity:1}}
+#cross{position:fixed;inset:0;z-index:60;background:center/contain no-repeat;opacity:0;pointer-events:none}
+#cross.on{animation:fl .24s}
+@keyframes fl{0%{opacity:0}50%{opacity:.85}100%{opacity:0}}
+/* 突脸（羽化边缘，与场景融合） */
+#scare{position:fixed;inset:0;z-index:70;background:center/contain no-repeat #000;opacity:0;pointer-events:none;
+ -webkit-mask-image:radial-gradient(ellipse at 50% 50%,#000 40%,rgba(0,0,0,.55) 64%,transparent 86%);
+ mask-image:radial-gradient(ellipse at 50% 50%,#000 40%,rgba(0,0,0,.55) 64%,transparent 86%)}
+#scare::after{content:"";position:absolute;inset:0;pointer-events:none;
+ background:radial-gradient(ellipse at 50% 55%,transparent 26%,rgba(40,8,6,.45) 74%,rgba(6,2,2,.92) 100%);mix-blend-mode:multiply}
+#scare.on{animation:scare .5s}
+@keyframes scare{0%{opacity:0;transform:scale(.6)}15%{opacity:.92;transform:scale(1.12)}35%{transform:scale(1)}100%{opacity:.92}}
+.shake-hard{animation:shakeh .4s}
+@keyframes shakeh{0%,100%{transform:translate(0,0)}20%{transform:translate(-8px,6px)}40%{transform:translate(7px,-5px)}60%{transform:translate(-6px,-7px)}80%{transform:translate(5px,4px)}}
+body.extreme #scan{opacity:.22}
+body.hell #scan{opacity:.18}
+/* 小游戏 */
+#miniGame{position:absolute;inset:0;background:rgba(5,3,3,.92);display:none;align-items:center;justify-content:center;z-index:25;flex-direction:column;gap:18px;padding:30px}
+#miniGame.on{display:flex}
+#mgTitle{font-size:22px;letter-spacing:5px;color:#e0c8b8;text-align:center}
+#mgHint{font-size:13px;letter-spacing:2px;color:#8a7468;text-align:center}
+#mgBar{width:min(360px,80%);height:14px;background:rgba(40,24,20,.7);border:1px solid rgba(150,80,70,.4);position:relative;overflow:hidden}
+#mgBarFill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#6a1a14,#c0392b);transition:width .05s linear}
+#mgBar .mgZone{position:absolute;top:0;bottom:0;background:rgba(220,120,60,.25);border-left:1px solid rgba(220,140,70,.6);border-right:1px solid rgba(220,140,70,.6)}
+#mgBar .mgNeedle{position:absolute;top:-3px;bottom:-3px;width:3px;background:#efe6dc;box-shadow:0 0 6px rgba(240,230,220,.8)}
+#mgArea{width:min(360px,86%);min-height:170px;border:1px solid rgba(150,80,70,.4);background:rgba(16,10,9,.6);
+ display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;cursor:pointer;
+ font-size:16px;letter-spacing:2px;color:#c8b4a4;line-height:1.8;position:relative;overflow:hidden;user-select:none}
+#mgArea:active{background:rgba(40,22,18,.7)}
+#mgTap{width:min(360px,80%);padding:16px;background:rgba(30,14,12,.8);border:1px solid rgba(190,70,55,.55);
+ color:#e8d2c4;font-size:17px;letter-spacing:4px;font-family:inherit;cursor:pointer}
+#mgTap:hover{background:rgba(60,22,18,.9)}
+#mgTap:active{transform:scale(.98)}
+.mgText{font-size:22px;letter-spacing:3px;color:#c0392b}
+.mgCount{position:absolute;bottom:8px;right:12px;font-size:12px;color:#8a6a5a}
+/* 小游戏：躲闪模式（多目标点） */
+#mgBoard{position:relative;width:min(360px,86%);height:240px;border:1px solid rgba(150,80,70,.4);background:rgba(16,10,9,.6);overflow:hidden}
+.mgDot{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(200,60,50,.85);border:1px solid #ff8a7a;box-shadow:0 0 12px rgba(200,40,30,.7);cursor:pointer}
+.mgDot.safe{background:rgba(90,180,120,.85);border-color:#b8ffd0;box-shadow:0 0 12px rgba(80,180,110,.7)}
+.mgDot.bad{background:rgba(60,60,70,.6);border-color:#666;box-shadow:none}
+/* 小游戏：记忆翻牌 */
+#mgCards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:min(360px,86%)}
+.mgCard{aspect-ratio:1;background:rgba(40,24,20,.8);border:1px solid rgba(150,80,70,.4);border-radius:8px;cursor:pointer;
+ display:flex;align-items:center;justify-content:center;font-size:22px;color:#e0c8b8;transition:all .15s}
+.mgCard.flip{background:rgba(70,30,24,.9);border-color:#c85050;color:#ffb0a0}
+.mgCard.off{opacity:.35}
+/* 免责声明（markdown 渲染） */
+#disclaimer{position:absolute;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:45;padding:30px}
+#disclaimer.on{display:flex}
+#discBox{width:min(560px,100%);background:#0f0a09;border:1px solid rgba(170,70,60,.5);padding:26px;display:flex;flex-direction:column;gap:14px;max-height:90vh}
+#discBox .discScroll{overflow-y:auto;flex:1;font-size:14px;line-height:2;letter-spacing:1px;color:#cbb4a4;padding-right:8px;min-height:100px}
+#extreme{position:absolute;inset:0;background:rgba(0,0,0,.95);display:none;flex-direction:column;z-index:46;padding:28px}
+#extreme.on{display:flex}
+#extTitle{font-size:20px;letter-spacing:5px;color:#e0a090;text-align:center;margin-bottom:14px}
+#extScroll{flex:1;overflow-y:auto;font-size:13px;line-height:2.05;letter-spacing:1px;color:#c9b2a2;
+ width:min(620px,100%);margin:0 auto;background:rgba(20,10,9,.5);border:1px solid rgba(150,60,50,.35);padding:20px;margin-bottom:14px}
+#extAgree{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px;color:#d5c0b0;font-size:14px;letter-spacing:1px}
+#extAgree input{width:18px;height:18px;accent-color:#b04a3a}
+#extBtns{display:flex;gap:14px;justify-content:center}
+/* markdown 通用样式 */
+.md h3{font-size:15px;letter-spacing:3px;color:#e0a090;margin:14px 0 6px;font-weight:400}
+.md h4{font-size:14px;letter-spacing:2px;color:#d0a898;margin:12px 0 4px;font-weight:400}
+.md p{margin:6px 0;color:#cbb4a4}
+.md ul{margin:4px 0 8px;padding-left:20px}
+.md li{margin:3px 0}
+.md b{color:#e6c8b8;font-weight:600}
+.md blockquote{margin:8px 0;padding:8px 14px;border-left:2px solid rgba(170,70,60,.5);background:rgba(30,14,12,.5);color:#c9ad9c;font-size:12.5px;line-height:1.9}
+#toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(30,16,14,.9);
+ border:1px solid rgba(170,70,60,.5);color:#e0c8b8;padding:8px 18px;font-size:13px;letter-spacing:2px;opacity:0;transition:opacity .3s;z-index:30;pointer-events:none}
+#toast.on{opacity:1}
+#fogIcon{position:absolute;top:20px;right:22px;font-size:13px;letter-spacing:2px;color:#8a4a40;z-index:7;display:none}
+body.blood #storyText,body.blood #endText{color:#cbb0a0}
+/* 时间线 */
+#timeline{position:absolute;z-index:8;background:rgba(12,8,7,.92);border:1px solid rgba(150,80,70,.35);
+ overflow:auto;display:none;padding:12px 14px}
+#timeline.on{display:block}
+#timeline .tlTitle{font-size:12px;letter-spacing:3px;color:#b98a78;margin-bottom:8px}
+#timeline .tlStep{font-size:12px;letter-spacing:1px;color:#c4b5a6;line-height:1.9;margin:2px 0}
+#timeline .tlStep .tlIdx{color:#8a6a5a;margin-right:6px}
+#timeline .tlStep .tlChosen{color:#e0c8b8}
+#timeline .tlStep .tlUnchosen{color:#6d5f5f}
+#timeline .tlBranch{color:#7a6a60;font-size:11px}
+/* 时间线位置：下方横向滚动 / 侧边竖排 / 底部细线 */
+#timeline.pos-bottom{left:20px;right:20px;bottom:90px;max-height:34vh;border-radius:8px}
+#timeline.pos-side{left:12px;top:60px;bottom:80px;width:200px;border-radius:8px}
+#timeline.pos-line{left:20px;right:20px;bottom:16px;padding:6px 12px;background:rgba(12,8,7,.55)}
+#timeline.pos-line .tlTitle{display:inline;margin-right:10px}
+#timeline.pos-line .tlStep{display:inline;margin:0 8px}
+#timeline.pos-line .tlStep .tlUnchosen{display:none}
+#btnTimeline{position:absolute;right:20px;bottom:14px;z-index:8;font-size:12px;letter-spacing:2px;color:#9a7a6a;
+ background:rgba(20,12,10,.8);border:1px solid rgba(150,80,70,.4);padding:6px 14px;cursor:pointer;font-family:inherit;display:none}
+#btnTimeline:hover{color:#e0c8b8}
+@media(max-width:420px){h1{font-size:30px}.grid{grid-template-columns:repeat(4,1fr)}#storyText{font-size:15px}#timeline.pos-side{width:160px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bg" data-mode="door"></div>
+  <div id="fog"></div>
+  <div id="scan"></div>
+  <div id="vign"></div>
+  <div id="noise"></div>
+  <div id="cross"></div>
+  <div id="scare"></div>
+  <div id="fogIcon" data-fog="1">雾 1</div>
+
+  <!-- 首屏 -->
+  <div id="intro">
+    <svg width="240" height="130" viewBox="0 0 240 130">
+      <text id="logoText" x="120" y="72" text-anchor="middle" font-family="KaiTi,STKaiti,serif" font-size="56" fill="none"
+        stroke="#e8dccd" stroke-width="1.6" stroke-dasharray="300" stroke-dashoffset="300"
+        style="animation:write 2.6s ease forwards;transform:skewX(-14deg);transform-box:fill-box;transform-origin:center">雾港</text>
+      <style>@keyframes write{to{stroke-dashoffset:0}}</style>
+    </svg>
+    <div class="subtitle" id="introSub">v6.0-snapshot 1</div>
+    <div class="tip">点击进入</div>
+  </div>
+
+  <!-- 主页 -->
+  <div id="menu" class="layer">
+    <div class="panel">
+      <div class="titleWrap" id="titleWrap">
+        <h1 id="menuTitle">雾 港</h1>
+        <div id="splash"></div>
+      </div>
+      <div class="lead" id="menuLead"></div>
+      <div class="stat" id="menuStat"></div>
+      <div class="startWrap" id="startWrap">
+        <button class="btn" id="btnStart">开始游戏</button>
+      </div>
+      <button class="btn" id="btnGallery">我的结局</button>
+      <button class="btn" id="btnSet">设置</button>
+    </div>
+    <div id="menuFoot"><span id="footAbout">关于</span> · <span id="footFull">全屏</span> · v6.0</div>
+  </div>
+
+  <!-- 剧情 -->
+  <div id="story" class="layer" style="justify-content:flex-start">
+    <div id="storyBox">
+      <div id="storyHead"><span id="depthTag">第 1 步</span><span class="small" id="hintEsc">ESC 暂停</span></div>
+      <div id="storyText"></div>
+      <div id="opts"></div>
+    </div>
+  </div>
+
+  <!-- 时间线 -->
+  <div id="timeline"><div class="tlTitle">时间线</div><div id="tlBody"></div></div>
+  <button id="btnTimeline">查看时间线</button>
+
+  <!-- 结局 -->
+  <div id="ending" class="layer">
+    <div class="panel" style="align-items:center">
+      <div id="endNo"></div>
+      <div id="endType"></div>
+      <div id="endPath"></div>
+      <div id="endText"></div>
+      <div id="endHorror"></div>
+      <div id="endAsk"></div>
+      <div style="display:flex;gap:14px;margin-top:20px">
+        <button class="btn sm" id="endHome">回主页</button>
+        <button class="btn sm gray" id="endGal">看结局</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div id="gallery" class="layer">
+    <div class="panel">
+      <h2>我的结局</h2>
+      <div class="stat" id="galStat"></div>
+      <div class="galTabs" id="galTabs"></div>
+      <div id="galGrid"></div>
+      <button class="btn gray sm" id="galBack" style="align-self:center;margin-top:6px">回主页</button>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="setLayer" class="layer">
+    <div class="panel">
+      <h2>设置</h2>
+      <div id="setItems"></div>
+      <div id="setBtns">
+        <button class="btn sm" id="setBack">回主页</button>
+        <button class="btn sm gray" id="setFull">全屏</button>
+        <button class="btn sm gray" id="setReload">重新加载</button>
+        <button class="btn sm danger" id="setClear">删除存档</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关于 -->
+  <div id="aboutLayer" class="layer">
+    <div class="panel" style="align-items:center">
+      <h2>关于</h2>
+      <div id="aboutBox"></div>
+      <button class="btn gray sm" id="aboutBack">回主页</button>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div id="pause">
+    <h2>已暂停</h2>
+    <div class="small">剧情没有回头路。退出即放弃本局。</div>
+    <div style="display:flex;gap:14px;margin-top:10px">
+      <button class="btn sm" id="pauseResume">继续</button>
+      <button class="btn sm danger" id="pauseExit">退出到主页</button>
+    </div>
+  </div>
+
+  <!-- 结局详情模态 -->
+  <div id="modal"><div id="modalBox">
+    <div id="mdNo" style="font-size:18px;letter-spacing:3px;color:#e6d6c6"></div>
+    <div id="mdType" style="font-size:12px;letter-spacing:2px"></div>
+    <div id="mdPath" style="font-size:13px;letter-spacing:1px;color:#c07868;line-height:1.9"></div>
+    <div id="mdText" style="font-size:14px;line-height:2;color:#cbb0a0"></div>
+    <button class="btn gray sm" id="modalClose" style="align-self:center">关闭</button>
+  </div></div>
+
+  <!-- 小游戏 -->
+  <div id="miniGame">
+    <div id="mgTitle"></div>
+    <div id="mgHint"></div>
+    <div id="mgBar"></div>
+    <div id="mgArea"></div>
+    <div id="mgBoard"></div>
+    <div id="mgCards"></div>
+    <button id="mgTap">行动</button>
+  </div>
+
+  <!-- 首次免责声明 -->
+  <div id="disclaimer">
+    <div id="discBox">
+      <h2>开始之前</h2>
+      <div class="discScroll md" id="discText"></div>
+      <div style="display:flex;gap:12px">
+        <button class="btn sm gray" id="discSet">前往设置</button>
+        <button class="btn sm" id="discStart">开始游戏，我是猛男</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 惧渊临境免责声明 -->
+  <div id="extreme">
+    <div id="extTitle">惧渊临境 · 风险告知与使用规范</div>
+    <div id="extScroll" class="md"></div>
+    <div id="extAgree">
+      <input type="checkbox" id="extCheck">
+      <label for="extCheck">我已完整阅读并同意以上全部内容，确认已做好心理准备</label>
+    </div>
+    <div id="extBtns">
+      <button class="btn sm gray" id="extCancel">再想想</button>
+      <button class="btn sm danger2" id="extConfirm" disabled>确认开启</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script src="tree_data.js"></script>
+<script src="groups_data.js"></script>
+<script>
+/* ================= 数据规范化 ================= */
+(function(){ for (var id in TREE.nodes){ var n = TREE.nodes[id]; n.choices = n.choices.map(function(c){ return {label:c[0], to:c[1]}; }); } })();
+var GROUPS = TREE_GROUPS.groups || [];
+var SIDE_IDS = TREE_GROUPS.side || [];
+var HIDDEN_IDS = TREE_GROUPS.hidden || [];
+var TYPE_LABEL = TREE.types || {};
+var TYPE_COLOR = TREE.typeColors || {};
+
+/* ================= 常量 ================= */
+var VERSION = '6.0';
+var SAVE_KEY = 'wugang60.save.v1';
+var FIRST_KEY = 'wugang60.seenDisclaimer.v1';
+var PLAYED_KEY = 'wugang60.played.v1';
+var PLAYS_KEY = 'wugang60.plays.v1';
+var TOTAL_ENDINGS = Object.keys(TREE.endings).length;
+var HORROR_LABEL = { mild:'温和', normal:'正常', hell:'地狱', abyss:'惧渊临境' };
+var HIDDEN1 = HIDDEN_IDS[0] || 'H1';
+var HIDDEN2 = HIDDEN_IDS[1] || 'H2';
+function prettyId(id){ var n = String(parseInt(id.slice(1), 10)); return isNaN(n) ? id.slice(1) : n; }
+
+/* ================= 文案（变化类） ================= */
+var MENU_LEADS = [
+  '一步走错，就再也回不来了。',
+  '雾港今天也在等你。',
+  '你听见雾里有声音吗？',
+  '门已经开了，就在你身后。',
+  '这次，别再迷路。',
+  '它记得你上一次怎么死的。',
+  '雾还是那么浓，人还是那么少。',
+  '回到雾港，回到开始的地方。',
+  '有些门，走进去就出不来。',
+  '你确定要再来一次吗？',
+  '灯笼亮起来的时候，别回头。',
+  '这里没有出口，只有结局。',
+  '雾里有东西在数你的脚步声。',
+  '欢迎回来，旅人。',
+  '你上次的结局，它还记得。'
+];
+/* 幻文文案（普通档）：原飘散字 + 黄字 tips 合并 */
+var PHANTOM_NORMAL = [
+  '雾港是哪里','不要……','我还活着吗？','这里是天堂！！！','👀','别点我','回来……','你确定吗？','😱','雾里有东西在看你','别按下去','求你了，别开始',
+  '雾港6.0','修复了90%的bug','这是一个游戏','心理能力差的点击「开始游戏」','QWQ这挺好玩的','雾里没有雾，只有你','别回头，它在看','结局比你想象的还多','这只是个游戏，对吧？','第200个结局在等你'
+];
+/* 幻文文案（pro 档）：彩蛋向，自我怀疑 + 隐藏结局暗示 */
+var PHANTOM_PRO = [
+  '你是谁？','你真的是你吗？','屏幕外面，有眼睛。','红门在等你。','连点标题试试。','雾港是假的。','你也是假的。','作者在看。','美丽的红门。','虚假的游戏。','你看过结局 ？？？ 吗？','惧渊临境里，藏着一扇门。','别信你的手指。','这行字是谁写的？','你点了几次了？','我不该告诉你红门的事。','光标是你，还是我？'
+];
+var HIDDEN_DOUBTS = [
+  '我是谁','我真的是在雾港吗？','这是网络','网址不是 czy-cmd.github.io/wugang/6.0 吗？','作者明明是 czy-cmd，为什么，我有光标？','这不是真的','我的手指在动，可是……是谁在打字？','屏幕外面，是不是也有一双眼睛？','我读过这段文字吗？','等等，这只是一个网页','为什么我会在这里？','光标……光标是我吗？','我不是玩家，我是被玩的','雾港的雾，是不是也在我脑子里？','后退键没用了吧','我已经死了吗？','这句话是谁写的？','czy-cmd 是谁？','我是不是也只是一段文字？','如果这是游戏，那我是谁？'
+];
+
+/* ================= 免责声明（markdown） ================= */
+var DISCLAIMER_TEXT = [
+'# 风险提示',
+'本游戏含有大量恐怖元素，包括但不限于：',
+'- **突发惊吓**：突脸画面与尖锐声响；',
+'- **血腥与压抑的文字描写**；',
+'- **心理恐怖暗示**；',
+'- **快速闪烁与画面抖动**。',
+'这些内容可能引发焦虑、心悸、恶心等不适。',
+'如果你患有**心脏病、光敏性癫痫**或严重的心理障碍，请谨慎或避免游玩。',
+'',
+'## 使用准则',
+'- 恐怖程度可在「设置」中调整为温和、正常、地狱或惧渊临境；',
+'- 感到任何不适，请**立即关闭本页面**；',
+'- 请勿在深夜、酒后、服药后或情绪极端时游玩；',
+'- 请勿利用本作内容骚扰、恐吓、诱导他人。',
+'',
+'## 法律声明',
+'本作全部内容纯属虚构，不含真实事件，不涉及真实人物。',
+'> 依据《中华人民共和国消费者权益保护法》第十八条，经营者对可能危及人身、财产安全的商品和服务，应当向消费者作出真实的说明和明确的警示。',
+'继续即表示你已了解并自愿承受上述内容。'
+].join('\n');
+
+/* 惧渊临境免责声明（加长滚动版，分章节） */
+var ABYSS_TEXT = [
+'# 惧渊临境 · 风险告知与使用规范',
+'',
+'## 第一章　定义与性质',
+'「惧渊临境」是《雾港》中**最高恐怖档位**，其强度高于「地狱」档，为原「极度恐怖」模式的强化版本。',
+'进入该模式即视为你已充分了解并自愿承担由此产生的全部生理与心理后果。',
+'',
+'## 第二章　风险提示',
+'本模式会以**更频繁、更突然、更强烈**的方式呈现突脸画面、尖锐声响、画面抖动与快速闪烁，可能引起：',
+'- 心悸、胸闷、呼吸急促；',
+'- 焦虑、恐慌、濒死感等急性应激反应；',
+'- 恶心、眩晕、耳鸣；',
+'- 光敏性癫痫发作；',
+'- 睡眠障碍、噩梦、长期心理阴影。',
+'若你患有**心脏病、光敏性癫痫、高血压**，或处于**孕期、熬夜、情绪低落、刚经历现实创伤**等状态，**严禁开启本模式**。',
+'',
+'## 第三章　安全区声明',
+'**本模式没有安全区。** 开启后，主界面、设置、关于、图鉴等所有页面都将成为恐怖体验的一部分；',
+'唯一彻底离开的方式，是**关闭本页面**。',
+'',
+'## 第四章　使用准则',
+'- 请确保处于明亮、通风、安全的环境中；',
+'- 佩戴耳机时请控制音量，避免高分贝惊吓；',
+'- 单次游玩不宜过长，感到不适立即停止；',
+'- 未成年人请在监护人知情并同意的前提下使用；',
+'- 请勿利用本作内容骚扰、恐吓、诱导他人，或侵害他人合法权益。',
+'',
+'## 第五章　法律依据',
+'> 依据《中华人民共和国宪法》第五十一条，公民在行使自由和权利的时候，不得损害国家的、社会的、集体的利益和其他公民的合法的自由和权利。',
+'> 依据《中华人民共和国民法典》第一千一百七十六条，自愿参加具有一定风险的文体活动，因其他参加者的行为受到损害的，受害人不得请求其他参加者承担侵权责任；但是，其他参加者对损害的发生有故意或者重大过失的除外。',
+'> 依据《中华人民共和国消费者权益保护法》第十八条，经营者应当保证其提供的商品或者服务符合保障人身、财产安全的要求；对可能危及人身、财产安全的商品和服务，应当向消费者作出真实的说明和明确的警示。',
+'> 依据《中华人民共和国未成年人保护法》第七十五条，网络游戏服务提供者应当按照国家有关规定和标准，对游戏产品进行分类，作出适龄提示，并采取技术措施，不得让未成年人接触不适宜的游戏或者游戏功能。',
+'> 依据《中华人民共和国网络安全法》第十二条，任何个人和组织使用网络应当遵守宪法法律，遵守公共秩序，尊重社会公德，不得传播暴力信息。',
+'> 依据《中华人民共和国刑法》第一百二十条之三，以制作、散发宣扬恐怖主义、极端主义的图书、音频视频资料或者其他物品，或者通过发布信息等方式宣扬恐怖主义、极端主义的，或者煽动实施恐怖活动的，处五年以下有期徒刑、拘役、管制或者剥夺政治权利，并处罚金；情节严重的，处五年以上有期徒刑，并处罚金或者没收财产。',
+'',
+'## 第六章　适龄与自愿',
+'本模式含高强度心理恐怖与突发惊吓内容，**仅适合 18 周岁以上**、心理健康的人群在充分知情后体验。',
+'你的每一次进入，都是**完全自愿**的。',
+'',
+'## 第七章　确认与承诺',
+'我已完整阅读并理解以上全部内容，自愿开启「惧渊临境」模式，',
+'并自行承担由此产生的一切生理与心理不适。我承诺：',
+'- 不将本模式用于恐吓、骚扰、诱导或伤害他人；',
+'- 不向未满 18 周岁的未成年人传播或让其体验本模式；',
+'- 在感到任何不适时，立即主动停止并关闭本页面。'
+].join('\n');
+
+/* ================= 关于（标准格式） ================= */
+var ABOUT_ROWS = [
+  ['游戏名称','雾港'],
+  ['作者','czy'],
+  ['版本','6.0-snapshot 1'],
+  ['类型','文字冒险 · 恐怖 · 多结局'],
+  ['适龄提示','18+ · 含心理恐怖与突发惊吓'],
+  ['平台','网页 · 桌面 / 移动端浏览器'],
+  ['技术栈','原生 HTML / CSS / JavaScript'],
+  ['数据与隐私','存档仅保存在你本机的浏览器 localStorage 中，不采集、不上传任何个人信息'],
+  ['版权与许可','原创作品，MIT License，可自由使用与二次开发']
+];
+var ABOUT_SECTIONS = [
+  ['功能说明','本作为「一步走错、无法回头」的分支树叙事，共 200 余个结局（基础 192 + 旁支 12），分 9 类结局标签，含 2 个隐藏结局、8 种小游戏、突脸惊吓、四档恐怖程度、时间线与幻文等机制。'],
+  ['免责声明','本作全部内容纯属虚构。恐怖内容已作明确警示，请量力而行；感到不适请立即关闭页面。'],
+  ['开源与反馈','项目开源，欢迎反馈与改进。']
+];
+
+/* ================= 状态 ================= */
+function defSettings(){ return { bg:'door', bgm:false, sfx:true, speed:30, glitchType:true, shake:true, noFx:false, fogIcon:true, horror:'normal', sideBranches:false, phantomMode:'on', timelinePos:'bottom', timelineAuto:false, treeView:false }; }
+function defSave(){ return { v:2, endings:{}, settings:defSettings() }; }
+var S = defSave();
+var saveOK = true;
+function loadSave(){ try{ var r = localStorage.getItem(SAVE_KEY); if(r){ var o = JSON.parse(r); S = Object.assign(defSave(), o); S.settings = Object.assign(defSettings(), o.settings||{}); } }catch(e){ saveOK = false; } }
+function writeSave(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){ saveOK = false; } }
+function seenDisclaimer(){ try{ return localStorage.getItem(FIRST_KEY)==='1'; }catch(e){ return true; } }
+function markSeen(){ try{ localStorage.setItem(FIRST_KEY,'1'); }catch(e){} }
+var _played = false;
+function hasPlayed(){ if(_played) return true; try{ return localStorage.getItem(PLAYED_KEY)==='1'; }catch(e){ return true; } }
+function markPlayed(){ _played = true; try{ localStorage.setItem(PLAYED_KEY,'1'); }catch(e){} }
+function getPlays(){ try{ return parseInt(localStorage.getItem(PLAYS_KEY)||'0',10)||0; }catch(e){ return 0; } }
+function incPlays(){ try{ localStorage.setItem(PLAYS_KEY, String(getPlays()+1)); }catch(e){} }
+
+/* 本局运行态 */
+var RUN = { node:null, path:[], ended:false, horrorAtStart:'normal', variant:0, timeline:[] };
+
+/* ================= 文案变体选择 ================= */
+function pickText(nodeId, arr){ if(!Array.isArray(arr)) return String(arr||''); var idx = Math.min(RUN.variant || 0, arr.length - 1); return String(arr[idx]); }
+function visibleChoices(n){
+  var cs = n.choices, res = [];
+  for (var i=0;i<cs.length;i++){
+    if (cs[i].to.charAt(0)==='S' && !S.settings.sideBranches) continue;
+    res.push(cs[i]);
+  }
+  return res;
+}
+
+/* ================= 打字机 ================= */
+var GL = "▦▩▨▧▤▒░▓█▁▂▃▄▅▆▇▉▊";
+var T = { q:[], cur:null, timer:null, hold:null };
+function speed(){ var sp = S.settings.speed; if(S.settings.noFx || sp === 0) return 0; return sp || 30; }
+function tAdd(el, text, done){ T.q.push({ el:el, text:String(text||''), i:0, done:done||null }); if(!T.cur) pump(); }
+function tClear(){ if(T.timer) clearInterval(T.timer); if(T.hold) clearTimeout(T.hold); T.timer=null; T.hold=null; T.cur=null; T.q=[]; }
+function renderCur(){
+  var c = T.cur; if(!c) return;
+  var done = c.text.slice(0, c.i);
+  var rest = c.text.slice(c.i);
+  var el = c.el;
+  el.innerHTML = '';
+  el.appendChild(document.createTextNode(done));
+  if(rest.length && S.settings.glitchType && S.settings.horror!=='mild'){
+    var g = document.createElement('span'); g.className='glit';
+    g.textContent = rest[0] === '\n' ? '\n' : GL[Math.floor(Math.random()*GL.length)];
+    el.appendChild(g);
+  }
+  var s = document.createElement('span'); s.className='cur'; s.textContent=' '; el.appendChild(s);
+}
+function pump(){
+  if(T.cur || !T.q.length) return;
+  T.cur = T.q.shift(); T.cur.i = 0; renderCur();
+  var sp = speed();
+  if(sp <= 0){ T.cur.i = T.cur.text.length; finishCur(); return; }
+  T.timer = setInterval(function(){
+    if(!T.cur) return;
+    T.cur.i++;
+    if(T.cur.i >= T.cur.text.length){ clearInterval(T.timer); T.timer=null; finishCur(); return; }
+    renderCur(); tick();
+  }, sp);
+}
+function finishCur(){ var c=T.cur; if(!c) return; if(c.el){ c.el.innerHTML=''; c.el.appendChild(document.createTextNode(c.text)); } T.cur=null; if(c.done){ try{c.done();}catch(e){} } T.hold=setTimeout(function(){ T.hold=null; pump(); }, S.settings.noFx?0:110); }
+function skipType(){ if(T.cur){ if(T.timer){ clearInterval(T.timer); T.timer=null; } T.cur.i=T.cur.text.length; finishCur(); return true; } if(T.hold){ clearTimeout(T.hold); T.hold=null; pump(); return true; } return false; }
+
+/* ================= 音效 ================= */
+var AC = null;
+function ac(){ try{ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); return AC; }catch(e){ return null; } }
+function beep(f,d){ try{ var a=ac(); if(!a) return; var o=a.createOscillator(), g=a.createGain(); o.frequency.value=f; o.type='square'; g.gain.value=.012; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+d); }catch(e){} }
+function tick(){ if(S.settings.sfx && S.settings.horror!=='mild') beep(1400, .006); }
+function scream(intensity){
+  if(S.settings.horror==='mild' || S.settings.noFx) return;
+  try{
+    var a = ac(); if(!a) return;
+    var dur = intensity>=2 ? 0.85 : 0.5;
+    var buf = a.createBuffer(1, Math.floor(a.sampleRate*dur), a.sampleRate);
+    var data = buf.getChannelData(0);
+    for(var i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/data.length, 2);
+    var src = a.createBufferSource(); src.buffer = buf;
+    var g = a.createGain(); g.gain.value = intensity>=2 ? 0.45 : 0.28;
+    var f = a.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1700; f.Q.value=0.7;
+    src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+    var o = a.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(700, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1900, a.currentTime+dur*0.5);
+    var g2 = a.createGain(); g2.gain.setValueAtTime(0.22, a.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001, a.currentTime+dur);
+    o.connect(g2); g2.connect(a.destination); o.start(); o.stop(a.currentTime+dur);
+  }catch(e){}
+}
+
+/* ================= 层与视觉 ================= */
+function layer(id){ var ls=document.querySelectorAll('.layer'); for(var i=0;i<ls.length;i++) ls[i].classList.remove('on'); if(id) document.getElementById(id).classList.add('on'); }
+function layerOn(id){ return document.getElementById(id).classList.contains('on'); }
+function fogLevel(){ return Math.min(RUN.path.length + 1, 3); }
+function horrorOn(){ return S.settings.horror !== 'mild'; }
+function hellOn(){ return S.settings.horror === 'hell' || S.settings.horror === 'abyss'; }
+function abyssOn(){ return S.settings.horror === 'abyss'; }
+function applyVisual(){
+  var b = document.getElementById('bg');
+  b.setAttribute('data-mode', S.settings.bg || 'none');
+  document.body.classList.toggle('deep', fogLevel()>=3 || layerOn('ending'));
+  document.body.classList.toggle('blood', layerOn('ending'));
+  document.body.classList.toggle('extreme', abyssOn());
+  document.body.classList.toggle('hell', S.settings.horror === 'hell');
+  var f = document.getElementById('fogIcon');
+  f.style.display = (S.settings.fogIcon && layerOn('story')) ? 'block' : 'none';
+  f.textContent = '雾 ' + fogLevel();
+  var tag = document.getElementById('depthTag');
+  if(tag) tag.textContent = '第 ' + (RUN.path.length + 1) + ' 步';
+}
+function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){ el.classList.remove('on'); },1600); }
+
+/* ================= 突脸 ================= */
+var SCARE_FACES = [
+  "assets/face_white.png","assets/face_cracked.png",
+  "assets/scare_zombie.jpg","assets/scare_nun.jpg","assets/scare_mask.jpg",
+  "assets/scare_33811333.jpg","assets/scare_36517955.jpg","assets/scare_21036318.jpg",
+  "assets/scare_29366502.jpg","assets/scare_34628940.jpg","assets/scare_9229811.jpg"
+];
+var _lastScare = -1;
+function jumpScare(intensity){
+  if(!horrorOn() || S.settings.noFx) return;
+  var el = document.getElementById('scare');
+  var idx;
+  do { idx = Math.floor(Math.random()*SCARE_FACES.length); } while (idx === _lastScare && SCARE_FACES.length > 1);
+  _lastScare = idx;
+  var img = SCARE_FACES[idx];
+  el.style.backgroundImage = "url('"+img+"')";
+  el.classList.remove('on'); void el.offsetWidth;
+  el.style.animation = 'none'; void el.offsetWidth;
+  el.style.animation = 'scare ' + (intensity>=2 ? 0.6 : 0.34) + 's';
+  el.classList.add('on');
+  scream(intensity);
+  document.getElementById('app').classList.add('shake-hard');
+  setTimeout(function(){ document.getElementById('app').classList.remove('shake-hard'); }, 420);
+  setTimeout(function(){ el.classList.remove('on'); }, intensity>=2 ? 950 : 640);
+}
+function flashFace(){ var el=document.getElementById('cross'); el.style.backgroundImage="url('assets/face_white.png')"; el.classList.add('on'); setTimeout(function(){ el.classList.remove('on'); }, 240); }
+/* 惧渊临境 / 地狱：随机微惊吓（无安全区） */
+var HORROR_T = null;
+function horrorTick(){
+  if(abyssOn()){
+    if(GAME.active) return;
+    if(layerOn('story') && RUN.ended) return;
+    if(Math.random() < 0.32) jumpScare(1);
+  } else if(S.settings.horror === 'hell'){
+    if(GAME.active) return;
+    if(layerOn('story')) return;
+    if(Math.random() < 0.16) jumpScare(1);
+  }
+}
+function startHorrorTick(){ if(HORROR_T) clearInterval(HORROR_T); HORROR_T = (hellOn()) ? setInterval(horrorTick, abyssOn() ? 11000 : 16000) : null; }
+
+/* ================= 主页 ================= */
+function refreshMenu(){
+  var lead=document.getElementById('menuLead'), stat=document.getElementById('menuStat');
+  lead.innerHTML=''; stat.innerHTML='';
+  tAdd(lead, MENU_LEADS[Math.floor(Math.random()*MENU_LEADS.length)]);
+  var got = Object.keys(S.endings).length;
+  if(got>0){ renderTotal(stat, got); } else { tAdd(stat, '还没有人走到过结局。'); }
+  var first = !hasPlayed();
+  document.getElementById('btnGallery').style.display = first ? 'none' : '';
+  document.getElementById('btnSet').style.display = first ? 'none' : '';
+  document.getElementById('menuFoot').style.display = first ? 'none' : '';
+  applyVisual();
+  startPhantom();
+}
+function showMenu(){ layer('menu'); refreshMenu(); }
+
+/* ================= 幻文（三档：off/on/pro） ================= */
+var PHANTOM_T = null;
+function startPhantom(){
+  if(PHANTOM_T){ clearInterval(PHANTOM_T); PHANTOM_T = null; }
+  var mode = S.settings.phantomMode;
+  if(mode === 'off' || !layerOn('menu')) return;
+  var pro = mode === 'pro';
+  var pool = pro ? PHANTOM_PRO : PHANTOM_NORMAL;
+  var interval = pro ? 450 : 1000;
+  spawnPhantom(pool, pro);
+  PHANTOM_T = setInterval(function(){
+    if(!layerOn('menu')){ clearInterval(PHANTOM_T); PHANTOM_T=null; return; }
+    spawnPhantom(pool, pro);
+  }, interval);
+}
+function spawnPhantom(pool, pro){
+  var wrap = document.getElementById('menu');
+  if(!wrap) return;
+  var el = document.createElement('span');
+  el.className = 'scatter';
+  if(pro) el.style.fontSize = '19px', el.style.color = '#ff5a4a', el.style.textShadow = '0 0 10px rgba(255,60,40,.8)';
+  el.textContent = pool[Math.floor(Math.random()*pool.length)];
+  var vw = wrap.offsetWidth || 360, vh = wrap.offsetHeight || 640;
+  el.style.left = (Math.random()*(vw-80)) + 'px';
+  el.style.top = (Math.random()*(vh-60)) + 'px';
+  var ang = Math.random()*Math.PI*2;
+  var dist = pro ? (60 + Math.random()*140) : (30 + Math.random()*70);
+  el.style.setProperty('--dx', (Math.cos(ang)*dist).toFixed(1) + 'px');
+  el.style.setProperty('--dy', (Math.sin(ang)*dist - 26).toFixed(1) + 'px');
+  wrap.appendChild(el);
+  setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, pro ? 2000 : 2700);
+}
+
+/* ================= 剧情 ================= */
+function startGame(){
+  incPlays();
+  var plays = getPlays();
+  RUN = { node: TREE.root, path: [], ended:false, horrorAtStart:S.settings.horror, variant: Math.max(0, plays - 1), timeline: [] };
+  markPlayed();
+  layer('story');
+  renderNode(TREE.root);
+  applyVisual();
+  startHorrorTick();
+  hideTimeline();
+}
+function isLeafNode(n){ return n.choices.every(function(c){ return c.to.charAt(0)==='E' || c.to.charAt(0)==='S'; }); }
+function renderNode(id){
+  var n = TREE.nodes[id];
+  if(!n) return;
+  var box = document.getElementById('storyText');
+  var opts = document.getElementById('opts');
+  box.innerHTML = ''; opts.innerHTML = '';
+  var p = document.createElement('p'); box.appendChild(p);
+  tAdd(p, pickText(id, n.text), function(){
+    if(id === TREE.root){ markLastChar(p); }
+    // 末层节点：随机触发小游戏（带「有人发现了你」随机事件感）
+    if(isLeafNode(n) && Math.random() < gameTriggerChance()){
+      discovered(n);
+    } else {
+      revealChoices(n);
+    }
+  });
+  applyVisual();
+  updateTimeline();
+}
+function gameTriggerChance(){
+  var h = S.settings.horror;
+  if(h === 'mild') return 0.06;
+  if(h === 'normal') return 0.14;
+  if(h === 'hell') return 0.22;
+  return 0.30;
+}
+function discovered(n){
+  var box = document.getElementById('storyText');
+  var p2 = document.createElement('p');
+  p2.style.color = '#c33'; p2.style.letterSpacing = '3px';
+  box.appendChild(p2);
+  tAdd(p2, '……有人发现了你！', function(){
+    setTimeout(function(){ startMiniGame(n); }, 600);
+  });
+}
+
+/* ================= 隐藏结局彩蛋：连点最后字 → 光标 → 打字 ================= */
+var _secretCount = 0;
+function markLastChar(p){
+  var txt = p.textContent;
+  if(!txt) return;
+  var last = txt.slice(-1);
+  p.innerHTML = '';
+  p.appendChild(document.createTextNode(txt.slice(0, -1)));
+  var s = document.createElement('span');
+  s.className = 'lastChar';
+  s.textContent = last;
+  p.appendChild(s);
+  s.addEventListener('click', function(ev){ ev.stopPropagation(); secretTap(); });
+}
+function secretTap(){
+  _secretCount++;
+  if(_secretCount < 5) return;
+  _secretCount = 0;
+  wakeCursor();
+}
+var SECRET_STATE = { active:false, idx:0, lines:0 };
+function wakeCursor(){
+  SECRET_STATE.active = true; SECRET_STATE.idx = 0; SECRET_STATE.lines = 0;
+  var opts = document.getElementById('opts'); opts.innerHTML='';
+  var box = document.getElementById('storyText');
+  box.innerHTML='';
+  var p = document.createElement('p'); p.className='secretHint'; p.textContent = '我似乎可以打点什么';
+  box.appendChild(p);
+  var cur = document.createElement('span'); cur.className='secretCur'; cur.id='secretCur'; cur.textContent='▏';
+  box.appendChild(cur);
+  document.addEventListener('keydown', onSecretKey);
+}
+function onSecretKey(e){
+  if(!SECRET_STATE.active) return;
+  if(e.key === 'Escape') return;
+  e.preventDefault();
+  if(e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter' || e.key === ' '){ addDoubtLine(); }
+}
+function addDoubtLine(){
+  var box = document.getElementById('storyText');
+  var cur = document.getElementById('secretCur');
+  var line = document.createElement('p');
+  line.className = 'doubtLine';
+  line.textContent = HIDDEN_DOUBTS[SECRET_STATE.idx % HIDDEN_DOUBTS.length];
+  SECRET_STATE.idx++; SECRET_STATE.lines++;
+  box.insertBefore(line, cur);
+  box.scrollTop = box.scrollHeight;
+  if(SECRET_STATE.lines >= HIDDEN_DOUBTS.length){ finishSecret(); }
+}
+function finishSecret(){
+  SECRET_STATE.active = false;
+  document.removeEventListener('keydown', onSecretKey);
+  document.getElementById('storyText').innerHTML='';
+  document.getElementById('opts').innerHTML='';
+  showEnding(HIDDEN1);
+}
+
+/* 隐藏结局 H2：惧渊临境模式下，连点标题 5 次触发「美丽的红门」 */
+var _titleTap = 0, _titleTapT = null;
+function titleTap(){
+  if(!abyssOn()) return;
+  _titleTap++;
+  if(_titleTapT) clearTimeout(_titleTapT);
+  _titleTapT = setTimeout(function(){ _titleTap = 0; }, 2000);
+  if(_titleTap >= 5){
+    _titleTap = 0;
+    showEnding(HIDDEN2);
+  }
+}
+
+function revealChoices(n){
+  var opts = document.getElementById('opts');
+  opts.innerHTML = '';
+  var cs = visibleChoices(n);
+  cs.forEach(function(c, i){
+    var b = document.createElement('button'); b.className='opt';
+    b.style.opacity='0'; b.style.transform='translateY(8px)';
+    b.textContent = c.label;
+    opts.appendChild(b);
+    b.onclick = function(){ doChoice(c); };
+    setTimeout(function(){
+      b.style.transition='opacity .3s,transform .3s';
+      b.style.opacity='1'; b.style.transform='translateY(0)';
+    }, 80 + i*120);
+  });
+}
+function doChoice(c){
+  if(RUN.ended) return;
+  // 记录时间线：当前节点 + 所有可见选项 + 已选
+  var n = TREE.nodes[RUN.node];
+  if(n){
+    RUN.timeline.push({ nodeId: RUN.node, chosen: c.label, options: visibleChoices(n).map(function(o){ return o.label; }) });
+  }
+  RUN.path.push(c.label);
+  if(c.to.charAt(0) === 'E' || c.to.charAt(0) === 'S'){ showEnding(c.to); }
+  else { RUN.node = c.to; renderNode(c.to); }
+}
+function showEnding(eId){
+  RUN.ended = true;
+  if(HORROR_T){ clearInterval(HORROR_T); HORROR_T = null; }
+  var e = TREE.endings[eId] || TREE.hidden[eId];
+  if(!e){ return; }
+  var isHidden = !!TREE.hidden[eId];
+  var fresh = !S.endings[eId];
+  if(fresh) S.endings[eId] = { at: Date.now() };
+  writeSave();
+  layer('ending');
+  var no = document.getElementById('endNo'), path = document.getElementById('endPath'), box = document.getElementById('endText'), typeEl = document.getElementById('endType');
+  no.innerHTML=''; path.innerHTML=''; box.innerHTML=''; typeEl.innerHTML='';
+  var got = Object.keys(S.endings).length;
+  var num = isHidden ? '结局 ？？？' : (eId.charAt(0)==='S' ? ('旁支 ' + prettyId(eId)) : ('结局 ' + prettyId(eId)));
+  tAdd(no, '—— ' + num + '：' + e.name + '　·　已收集 ' + got + ' / ', function(){
+    var tn=document.createElement('span'); tn.className='totalNum'; tn.textContent = totalNow();
+    no.appendChild(tn);
+  });
+  // 类型标签
+  if(e.type){
+    var tc = document.createElement('span');
+    tc.textContent = '【' + e.type + ' · ' + (TYPE_LABEL[e.type]||'') + '】';
+    tc.style.color = TYPE_COLOR[e.type] || '#e0c8b8';
+    tc.style.textShadow = '0 0 6px ' + (TYPE_COLOR[e.type]||'#e0c8b8');
+    typeEl.appendChild(tc);
+  }
+  path.textContent = isHidden ? '你的路径：路径是什么啊……' : ('你的路径：' + RUN.path.join(' → '));
+  setTimeout(function(){ tAdd(box, e.text); }, 400);
+  var hor = document.getElementById('endHorror');
+  hor.textContent = '本局恐怖模式：' + HORROR_LABEL[RUN.horrorAtStart] + (e.side ? '　·　旁支结局' : '');
+  var ask = document.getElementById('endAsk'); ask.textContent = '';
+  if(RUN.horrorAtStart === 'abyss'){
+    setTimeout(function(){ tAdd(ask, '你还好吗？'); }, 1800);
+  }
+  if(fresh) toast(isHidden ? '隐藏结局已解锁。' : '解锁了新结局。');
+  applyVisual();
+  hideTimeline();
+}
+
+/* ================= 小游戏（8 种，运行时随机） ================= */
+var GAME = { active:false, node:null, type:null, timer:null, timer2:null, timer3:null, count:0, target:0, pos:0, state:'', start:0, window:0, min:0, max:0 };
+var GAME_TYPES = ['mash','timing','react','dodge','memory','hold','catch','stead'];
+var GAME_META = {
+  mash:   { title:'快逃！', hint:'时间结束前，猛点屏幕，甩掉它' },
+  timing: { title:'屏息凝神', hint:'等指针落进亮色区间，立刻行动' },
+  react:  { title:'别和它对视', hint:'它出现的一瞬间，立刻点「闭眼」' },
+  dodge:  { title:'躲开它', hint:'只点绿色的安全点，别碰红色的' },
+  memory: { title:'记住那张脸', hint:'记住闪过的牌，找出不同的那一张' },
+  hold:   { title:'稳住呼吸', hint:'按住不放，让指针停在亮色区间里' },
+  catch:  { title:'抓住它', hint:'看准移动的光点，点中它' },
+  stead:  { title:'稳住自己', hint:'画面颤抖，在它停止的那一刻点击' }
+};
+function startMiniGame(node){
+  GAME.active = true; GAME.node = node;
+  GAME.type = GAME_TYPES[Math.floor(Math.random()*GAME_TYPES.length)];
+  var meta = GAME_META[GAME.type];
+  var panel = document.getElementById('miniGame');
+  document.getElementById('mgTitle').textContent = meta.title;
+  document.getElementById('mgHint').textContent = meta.hint;
+  // 重置所有子区域
+  ['mgBar','mgArea','mgBoard','mgCards'].forEach(function(id){ var el=document.getElementById(id); el.style.display='none'; el.innerHTML=''; });
+  document.getElementById('mgTap').style.display='none';
+  document.getElementById('mgTap').onclick=null;
+  panel.classList.add('on');
+  var init = { mash:initMash, timing:initTiming, react:initReact, dodge:initDodge, memory:initMemory, hold:initHold, catch:initCatch, stead:initStead };
+  init[GAME.type](node);
+}
+function clearGame(){
+  if(GAME.timer){ clearInterval(GAME.timer); GAME.timer = null; }
+  if(GAME.timer2){ clearInterval(GAME.timer2); GAME.timer2 = null; }
+  if(GAME.timer3){ clearInterval(GAME.timer3); GAME.timer3 = null; }
+  GAME.active = false;
+  document.getElementById('miniGame').classList.remove('on');
+  document.getElementById('mgArea').onclick = null;
+  document.getElementById('mgBoard').onclick = null;
+}
+function endMiniGame(success){
+  var n = GAME.node;
+  var cs = visibleChoices(n);
+  var idx = success ? 0 : 1;
+  if(cs[idx]) RUN.path.push(cs[idx].label);
+  clearGame();
+  if(!success && horrorOn()) jumpScare(2);
+  // 走该节点第 idx 个选项的结局
+  if(cs[idx]) showEnding(cs[idx].to);
+  else showEnding(cs[0].to);
+}
+function initMash(g){
+  GAME.count = 0; GAME.target = 26; GAME.total = 3600;
+  var area = document.getElementById('mgArea'); area.style.display='flex';
+  area.innerHTML = '<div>猛点这里！</div><div class="mgText" id="mgNum">0 / ' + GAME.target + '</div>';
+  area.onclick = function(ev){ ev.stopPropagation(); GAME.count++; document.getElementById('mgNum').textContent = GAME.count + ' / ' + GAME.target; updateMashBar(); if(GAME.count >= GAME.target){ endMiniGame(true); } };
+  var bar = document.getElementById('mgBar'); bar.style.display='block'; bar.innerHTML='<div id="mgBarFill"></div>';
+  var start = Date.now();
+  GAME.timer = setInterval(function(){
+    var el = Date.now() - start;
+    updateMashBar(el / GAME.total);
+    if(el >= GAME.total){ endMiniGame(GAME.count >= GAME.target); }
+  }, 50);
+}
+function updateMashBar(r){ var f = document.getElementById('mgBarFill'); if(f) f.style.width = Math.min(100, r*100) + '%'; }
+function initTiming(g){
+  GAME.pos = 0; GAME.min = 52; GAME.max = 70;
+  var bar = document.getElementById('mgBar'); bar.style.display='block';
+  bar.innerHTML = '<div id="mgBarFill" style="width:0"></div><div class="mgZone" style="left:52%;width:18%"></div><div class="mgNeedle" id="mgNeedle" style="left:0"></div>';
+  var area = document.getElementById('mgArea'); area.style.display='flex';
+  area.innerHTML = '<div>等指针进入亮色区间，<br>立刻按下按钮。</div>';
+  area.onclick = null; area.style.cursor = 'default';
+  var tap = document.getElementById('mgTap');
+  tap.style.display = 'block';
+  tap.textContent = '就是现在';
+  tap.onclick = function(ev){ ev.stopPropagation(); if(GAME.pos >= GAME.min && GAME.pos <= GAME.max) endMiniGame(true); else endMiniGame(false); };
+  GAME.timer = setInterval(function(){
+    GAME.pos += 2.6;
+    if(GAME.pos > 100) GAME.pos = 0;
+    var n = document.getElementById('mgNeedle'); if(n) n.style.left = GAME.pos + '%';
+  }, 28);
+}
+function initReact(g){
+  GAME.state = 'wait';
+  var area = document.getElementById('mgArea'); area.style.display='flex';
+  area.innerHTML = '<div class="mgText">盯着它……<br><span style="font-size:13px;color:#8a7468">别眨眼</span></div>';
+  area.onclick = null; area.style.cursor = 'default';
+  var tap = document.getElementById('mgTap');
+  tap.style.display = 'block';
+  tap.textContent = '闭眼';
+  tap.onclick = function(ev){ ev.stopPropagation(); if(GAME.state === 'wait'){ endMiniGame(false); } else if(GAME.state === 'react'){ endMiniGame(true); } };
+  var delay = 1600 + Math.random()*2400;
+  GAME.timer = setTimeout(function(){
+    GAME.state = 'react';
+    area.innerHTML = '<div class="mgText" style="font-size:30px;color:#e03">闭眼！！</div>';
+    if(horrorOn()) jumpScare(1);
+    GAME.start = Date.now(); GAME.window = 750;
+    GAME.timer2 = setInterval(function(){
+      if(Date.now() - GAME.start > GAME.window){ endMiniGame(false); }
+    }, 50);
+  }, delay);
+}
+function initDodge(g){
+  GAME.count = 0; GAME.target = 5;
+  var board = document.getElementById('mgBoard'); board.style.display='block';
+  board.innerHTML = '<div style="position:absolute;bottom:8px;right:12px;font-size:12px;color:#8a6a5a" id="dgNum">0 / ' + GAME.target + '</div>';
+  board.onclick = function(ev){
+    var t = ev.target;
+    if(t.classList && t.classList.contains('mgDot')){
+      if(t.classList.contains('safe')){ GAME.count++; document.getElementById('dgNum').textContent = GAME.count + ' / ' + GAME.target; if(GAME.count >= GAME.target) endMiniGame(true); else dodgeRound(); }
+      else endMiniGame(false);
+    }
+  };
+  dodgeRound();
+}
+function dodgeRound(){
+  var board = document.getElementById('mgBoard');
+  board.querySelectorAll('.mgDot').forEach(function(d){ d.remove(); });
+  var safeIdx = Math.floor(Math.random()*4);
+  for(var i=0;i<4;i++){
+    var d = document.createElement('div');
+    d.className = 'mgDot' + (i===safeIdx ? ' safe' : ' bad');
+    d.style.left = (10 + Math.random()*68) + '%';
+    d.style.top = (10 + Math.random()*60) + '%';
+    board.appendChild(d);
+  }
+}
+function initMemory(g){
+  GAME.count = 0; GAME.target = 3; GAME.state = 'round';
+  var cards = document.getElementById('mgCards'); cards.style.display='grid';
+  cards.innerHTML='';
+  var cells = [];
+  for(var i=0;i<4;i++){
+    var c = document.createElement('div'); c.className='mgCard'; c.textContent='?';
+    cards.appendChild(c); cells.push(c);
+  }
+  function round(){
+    if(GAME.count >= GAME.target){ endMiniGame(true); return; }
+    var odd = Math.floor(Math.random()*4);
+    var face = ['👁','🕯','🩸','💀','📿','🕳'];
+    var base = face[Math.floor(Math.random()*face.length)];
+    var oddFace = face[(face.indexOf(base)+1)%face.length];
+    // 展示
+    cells.forEach(function(c,i){ c.textContent = i===odd ? oddFace : base; c.classList.add('flip'); c.classList.remove('off'); });
+    GAME.timer = setTimeout(function(){
+      cells.forEach(function(c){ c.textContent='?'; c.classList.remove('flip'); });
+      GAME.state = 'guess';
+    }, 900);
+    cells.forEach(function(c,i){
+      c.onclick = function(){
+        if(GAME.state !== 'guess') return;
+        if(i===odd){ GAME.count++; GAME.state='round'; setTimeout(round, 400); }
+        else endMiniGame(false);
+      };
+    });
+  }
+  round();
+}
+function initHold(g){
+  GAME.pos = 0; GAME.min = 40; GAME.max = 60; GAME.holding = false; GAME.good = false;
+  var bar = document.getElementById('mgBar'); bar.style.display='block';
+  bar.innerHTML = '<div id="mgBarFill" style="width:0;background:linear-gradient(90deg,#6a1a14,#2e7d32)"></div><div class="mgZone" style="left:40%;width:20%"></div><div class="mgNeedle" id="mgNeedle" style="left:0"></div>';
+  var area = document.getElementById('mgArea'); area.style.display='flex';
+  area.innerHTML = '<div>按住按钮，让指针停在绿色区间，<br>持续 2 秒。松手即判定。</div>';
+  area.onclick=null;
+  var tap = document.getElementById('mgTap'); tap.style.display='block'; tap.textContent='按住';
+  var pressTimer=null;
+  tap.onmousedown = tap.ontouchstart = function(ev){ ev.stopPropagation(); GAME.holding=true; };
+  tap.onmouseup = tap.ontouchend = tap.onmouseleave = function(ev){ ev.stopPropagation(); if(GAME.holding){ GAME.holding=false; if(GAME.good) endMiniGame(true); else endMiniGame(false); } };
+  GAME.timer = setInterval(function(){
+    GAME.pos += GAME.holding ? 4.5 : -3;
+    if(GAME.pos > 100) GAME.pos = 100;
+    if(GAME.pos < 0) GAME.pos = 0;
+    GAME.good = (GAME.pos >= GAME.min && GAME.pos <= GAME.max);
+    var n = document.getElementById('mgNeedle'); if(n) n.style.left = GAME.pos + '%';
+    if(GAME.good) GAME.goodMs = (GAME.goodMs||0)+28;
+  }, 28);
+}
+function initCatch(g){
+  GAME.count = 0; GAME.target = 3;
+  var board = document.getElementById('mgBoard'); board.style.display='block';
+  board.innerHTML = '<div style="position:absolute;bottom:8px;right:12px;font-size:12px;color:#8a6a5a" id="ctNum">0 / ' + GAME.target + '</div>';
+  var dot = document.createElement('div'); dot.className='mgDot safe'; dot.style.width='38px'; dot.style.height='38px';
+  board.appendChild(dot);
+  dot.onclick = function(ev){ ev.stopPropagation(); GAME.count++; document.getElementById('ctNum').textContent = GAME.count + ' / ' + GAME.target; if(GAME.count>=GAME.target) endMiniGame(true); else moveDot(); };
+  function moveDot(){
+    dot.style.left = (5 + Math.random()*78) + '%';
+    dot.style.top = (5 + Math.random()*70) + '%';
+  }
+  moveDot();
+  GAME.timer = setInterval(moveDot, 650);
+  // 超时失败
+  GAME.timer2 = setTimeout(function(){ if(GAME.active) endMiniGame(false); }, 6000);
+}
+function initStead(g){
+  GAME.state = 'shake';
+  var area = document.getElementById('mgArea'); area.style.display='flex';
+  area.innerHTML = '<div class="mgText" id="stText">别抖……<br>别抖……</div>';
+  area.onclick = function(ev){
+    ev.stopPropagation();
+    if(GAME.state === 'still'){ endMiniGame(true); }
+    else if(GAME.state === 'shake'){ endMiniGame(false); }
+  };
+  var areaEl = area;
+  GAME.timer = setInterval(function(){
+    if(GAME.state==='shake'){
+      areaEl.style.transform = 'translate(' + (Math.random()*8-4) + 'px,' + (Math.random()*8-4) + 'px)';
+    }
+  }, 40);
+  var stopAt = 1400 + Math.random()*2200;
+  GAME.timer2 = setTimeout(function(){
+    GAME.state = 'still';
+    areaEl.style.transform = 'none';
+    document.getElementById('stText').innerHTML = '<span style="color:#5ad0a0">就是现在！</span>';
+    if(horrorOn()) jumpScare(1);
+    GAME.timer3 = setTimeout(function(){ if(GAME.active) endMiniGame(false); }, 700);
+  }, stopAt);
+}
+
+/* ================= 时间线 ================= */
+function timelinePosClass(){
+  if(S.settings.treeView) return 'pos-side';
+  return 'pos-' + (S.settings.timelinePos || 'bottom');
+}
+function updateTimeline(){
+  var tl = document.getElementById('timeline');
+  var btn = document.getElementById('btnTimeline');
+  // 按钮只在剧情进行中显示；自动出现时隐藏按钮
+  var inStory = layerOn('story') && !RUN.ended;
+  btn.style.display = (inStory && !S.settings.timelineAuto) ? 'block' : 'none';
+  if(!inStory) hideTimeline();
+  tl.className = timelinePosClass();
+  var body = document.getElementById('tlBody');
+  body.innerHTML = '';
+  if(S.settings.treeView){
+    // 实验性：整条分支树当前分支（含未走到分叉）
+    RUN.timeline.forEach(function(step, i){
+      var div = document.createElement('div'); div.className='tlStep';
+      var idx = document.createElement('span'); idx.className='tlIdx'; idx.textContent = (i+1) + '.';
+      div.appendChild(idx);
+      var node = TREE.nodes[step.nodeId];
+      var title = document.createElement('span'); title.className='tlBranch'; title.textContent = '（分叉）';
+      div.appendChild(title);
+      body.appendChild(div);
+      step.options.forEach(function(lbl){
+        var o = document.createElement('div'); o.className='tlStep'; o.style.paddingLeft='22px';
+        var mark = lbl === step.chosen ? '→ ' : '· ';
+        var s = document.createElement('span'); s.className = lbl === step.chosen ? 'tlChosen' : 'tlUnchosen';
+        s.textContent = mark + lbl;
+        o.appendChild(s);
+        body.appendChild(o);
+      });
+    });
+  } else {
+    // 默认：只画走过的路径
+    if(RUN.path.length === 0 && RUN.timeline.length === 0){
+      body.innerHTML = '<div class="tlStep tlBranch">开局 · 你回到了雾港</div>';
+    }
+    RUN.timeline.forEach(function(step, i){
+      var div = document.createElement('div'); div.className='tlStep';
+      var idx = document.createElement('span'); idx.className='tlIdx'; idx.textContent = (i+1) + '.';
+      div.appendChild(idx);
+      var s = document.createElement('span'); s.className='tlChosen'; s.textContent = step.chosen;
+      div.appendChild(s);
+      body.appendChild(div);
+    });
+    if(!RUN.ended && RUN.path.length > 0){
+      var cur = document.createElement('div'); cur.className='tlStep';
+      var cidx = document.createElement('span'); cidx.className='tlIdx'; cidx.textContent = '·';
+      cur.appendChild(cidx);
+      var cs = document.createElement('span'); cs.className='tlUnchosen'; cs.textContent = '（当前：面临选择）';
+      cur.appendChild(cs);
+      body.appendChild(cur);
+    }
+  }
+  // 自动出现 / 手动按钮
+  if(S.settings.timelineAuto && layerOn('story') && !RUN.ended){
+    showTimeline();
+  }
+}
+function showTimeline(){ var tl=document.getElementById('timeline'); tl.classList.add('on'); }
+function hideTimeline(){ document.getElementById('timeline').classList.remove('on'); }
+function toggleTimeline(){
+  var tl = document.getElementById('timeline');
+  if(tl.classList.contains('on')) hideTimeline(); else { updateTimeline(); showTimeline(); }
+}
+
+/* ================= 图鉴 ================= */
+var _totalFlash = false;
+function totalNow(){
+  var total = TOTAL_ENDINGS;
+  var unlocked = 0;
+  for(var i=0;i<HIDDEN_IDS.length;i++){ if(S.endings[HIDDEN_IDS[i]]) unlocked++; }
+  total += unlocked;
+  if(unlocked < HIDDEN_IDS.length && _totalFlash) total += 1;
+  return total;
+}
+function renderTotal(el, got){
+  el.innerHTML='';
+  el.appendChild(document.createTextNode('已收集 ' + got + ' / '));
+  var tn=document.createElement('span'); tn.className='totalNum'; tn.textContent = totalNow();
+  el.appendChild(tn);
+}
+function flashTotal(){
+  _totalFlash = true;
+  var ns=document.querySelectorAll('.totalNum'); for(var i=0;i<ns.length;i++) ns[i].textContent = totalNow();
+  setTimeout(function(){ _totalFlash = false; var ns2=document.querySelectorAll('.totalNum'); for(var i=0;i<ns2.length;i++) ns2[i].textContent = totalNow(); }, 1000);
+}
+setInterval(flashTotal, 5000);
+
+var _galTab = 0;
+function buildGallery(){
+  var stat=document.getElementById('galStat');
+  stat.innerHTML='';
+  var got = Object.keys(S.endings).length;
+  renderTotal(stat, got);
+  bindGalTabs();
+  renderGalGrid();
+}
+function buildGalTabs(){
+  var wrap = document.getElementById('galTabs');
+  wrap.innerHTML = '';
+  GROUPS.forEach(function(g, i){
+    var b = document.createElement('button'); b.className='galTab'; b.dataset.g = i;
+    var short = g.name.split('·')[1];
+    if(short) short = short.split('（')[0].trim();
+    b.textContent = short || g.name;
+    wrap.appendChild(b);
+  });
+  var sb = document.createElement('button'); sb.className='galTab'; sb.dataset.g = 'side';
+  sb.textContent = '旁支';
+  wrap.appendChild(sb);
+  var hb = document.createElement('button'); hb.className='galTab'; hb.dataset.g = 'hidden';
+  hb.textContent = '隐藏';
+  wrap.appendChild(hb);
+  // 激活当前 tab
+  var tabs = wrap.querySelectorAll('.galTab');
+  tabs.forEach(function(t){
+    var key = String(_galTab);
+    var tkey = t.dataset.g;
+    t.classList.toggle('active', key === tkey);
+  });
+}
+function bindGalTabs(){
+  buildGalTabs();
+  document.querySelectorAll('#galTabs .galTab').forEach(function(t){
+    t.onclick = function(){
+      var key = t.dataset.g;
+      _galTab = key === 'side' ? 'side' : key === 'hidden' ? 'hidden' : parseInt(key, 10);
+      bindGalTabs();
+      renderGalGrid();
+    };
+  });
+}
+function renderGalGrid(){
+  var grid=document.getElementById('galGrid');
+  grid.innerHTML='';
+  grid.style.display=''; grid.style.justifyContent=''; grid.style.alignItems='';
+  if(_galTab === 'hidden'){
+    grid.style.display='flex'; grid.style.justifyContent='center'; grid.style.alignItems='flex-start'; grid.style.gap='10px';
+    var anyUnlocked = HIDDEN_IDS.some(function(id){ return !!S.endings[id]; });
+    if(!anyUnlocked){
+      var tip=document.createElement('div');
+      tip.style.cssText='width:100%;text-align:center;color:#6d5f5f;letter-spacing:3px;padding:36px 0;font-size:13px';
+      tip.textContent='敬请期待';
+      grid.appendChild(tip);
+    } else {
+      HIDDEN_IDS.forEach(function(id){
+        var e = TREE.hidden[id];
+        var c=document.createElement('div'); c.className='cell hiddenE' + (S.endings[id] ? ' open' : '');
+        c.style.width='calc((100% - 10px)/2)';
+        c.textContent = S.endings[id] ? e.name : '■■■';
+        if(S.endings[id]) c.onclick = function(){ detailHidden(id); };
+        grid.appendChild(c);
+      });
+    }
+    return;
+  }
+  var ids;
+  if(_galTab === 'side') ids = SIDE_IDS;
+  else ids = GROUPS[_galTab] ? GROUPS[_galTab].ids : [];
+  ids.forEach(function(id, i){
+    var e = TREE.endings[id];
+    var un = !!S.endings[id];
+    var c=document.createElement('div'); c.className='cell'+(un?' open':'');
+    c.textContent = un ? e.name : '■■■';
+    if(un && e.type){ c.style.borderColor = TYPE_COLOR[e.type]; c.style.color = TYPE_COLOR[e.type]; }
+    if(un) c.onclick = function(){ detail(e, id); };
+    grid.appendChild(c);
+    if(!S.settings.noFx){ c.style.opacity='0'; setTimeout(function(){ c.style.transition='opacity .3s'; c.style.opacity='1'; }, i*16); }
+  });
+}
+function detail(e, id){
+  var m=document.getElementById('modal');
+  document.getElementById('mdNo').textContent = (id.charAt(0)==='S'?'旁支 ':'结局 ') + prettyId(id) + '：' + e.name;
+  var mt = document.getElementById('mdType');
+  if(e.type){ mt.textContent = '【' + e.type + ' · ' + (TYPE_LABEL[e.type]||'') + '】'; mt.style.color = TYPE_COLOR[e.type]; }
+  else mt.textContent = '';
+  document.getElementById('mdPath').textContent = '如何进入：' + e.path.join(' → ');
+  document.getElementById('mdText').textContent = e.text;
+  m.classList.add('on');
+}
+function detailHidden(id){
+  var e = TREE.hidden[id];
+  var m=document.getElementById('modal');
+  document.getElementById('mdNo').textContent = '结局 ？？？：' + e.name;
+  var mt = document.getElementById('mdType');
+  if(e.type){ mt.textContent = '【' + e.type + ' · ' + (TYPE_LABEL[e.type]||'') + '】'; mt.style.color = TYPE_COLOR[e.type]; }
+  document.getElementById('mdPath').textContent = e.path.join(' → ');
+  document.getElementById('mdText').textContent = e.text;
+  m.classList.add('on');
+}
+
+/* ================= 设置 ================= */
+var SET_DEF = [
+  ['bg','背景','selectBg'],['bgm','背景音乐','bool'],['sfx','打字音效','bool'],['speed','打字速度','select'],
+  ['horror','恐怖程度','selectHorror'],['sideBranches','旁支结局','bool'],['phantomMode','幻文','selectPhantom'],
+  ['timelinePos','时间线位置','selectTimelinePos'],['timelineAuto','时间线自动出现','bool'],['treeView','实验性·分支树视图','bool'],
+  ['glitchType','乱码打字','bool'],['shake','故障动效','bool'],['noFx','减少动态效果','bool'],['fogIcon','雾浓度指示器','bool']
+];
+function buildSettings(){
+  var box=document.getElementById('setItems'); box.innerHTML='';
+  if(abyssOn()){
+    var w=document.createElement('div'); w.className='extWarn';
+    w.innerHTML='<b>惧渊临境已开启。</b><br>这里没有安全区——你现在所在的每个页面，都是游戏的一部分。<br>唯一离开的方式：<b>关闭本页面</b>。';
+    box.appendChild(w);
+  }
+  SET_DEF.forEach(function(row){
+    var key=row[0], label=row[1], type=row[2], l=document.createElement('label'); l.className='chk'; box.appendChild(l);
+    var span=document.createElement('span'); span.textContent=label; l.appendChild(span);
+    if(type==='bool'){
+      var inp=document.createElement('input'); inp.type='checkbox'; inp.checked=!!S.settings[key]; l.appendChild(inp);
+      if(key==='bgm' && abyssOn()){ inp.disabled = true; inp.checked = true; }
+      inp.onchange=function(){
+        if(key==='bgm' && abyssOn()){ inp.checked = true; return; }
+        S.settings[key]=inp.checked; writeSave(); applySettings(); applyVisual();
+      };
+    } else if(type==='selectBg'){
+      var sel=document.createElement('select'); l.appendChild(sel);
+      [['无','none'],['红门','door'],['故障图','glitch']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; sel.appendChild(op); });
+      sel.value=S.settings.bg; sel.onchange=function(){ S.settings.bg=sel.value; writeSave(); applyVisual(); };
+    } else if(type==='selectHorror'){
+      var selh=document.createElement('select'); l.appendChild(selh);
+      [['温和','mild'],['正常','normal'],['地狱','hell'],['惧渊临境','abyss']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; selh.appendChild(op); });
+      selh.value=S.settings.horror;
+      if(abyssOn()){ selh.disabled = true; } // 惧渊临境锁死下拉框
+      selh.onchange=function(){
+        var want = selh.value;
+        if(abyssOn()){ selh.value='abyss'; return; } // 锁死
+        if(want==='abyss'){ selh.value = S.settings.horror; openAbyss(); return; }
+        S.settings.horror=want; writeSave(); applyVisual(); startHorrorTick();
+      };
+    } else if(type==='selectPhantom'){
+      var selp=document.createElement('select'); l.appendChild(selp);
+      [['开启','on'],['关闭','off'],['pro','pro']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; selp.appendChild(op); });
+      selp.value=S.settings.phantomMode;
+      selp.onchange=function(){ S.settings.phantomMode=selp.value; writeSave(); };
+    } else if(type==='selectTimelinePos'){
+      var selt=document.createElement('select'); l.appendChild(selt);
+      [['下方横滚','bottom'],['侧边竖排','side'],['底部细线','line']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; selt.appendChild(op); });
+      selt.value=S.settings.timelinePos;
+      selt.onchange=function(){ S.settings.timelinePos=selt.value; writeSave(); };
+    } else {
+      var sel2=document.createElement('select'); l.appendChild(sel2);
+      [['慢','60'],['正常','30'],['快','15'],['瞬时','0']].forEach(function(o){ var op=document.createElement('option'); op.value=o[1]; op.textContent=o[0]; sel2.appendChild(op); });
+      sel2.value=String(S.settings.speed); sel2.onchange=function(){ S.settings.speed=parseInt(sel2.value,10); writeSave(); previewSpeed(); };
+    }
+  });
+  // 惧渊临境独立按钮
+  var extWrap = document.createElement('div'); extWrap.style.padding='6px 0';
+  var extBtn = document.createElement('button'); extBtn.className='btn danger2 sm';
+  extBtn.id = 'extToggle';
+  extBtn.textContent = abyssOn() ? '关闭惧渊临境（需连点 3 次）' : '开启惧渊临境';
+  extBtn.onclick = abyssOn() ? closeAbyss : openAbyss;
+  extWrap.appendChild(extBtn); box.appendChild(extWrap);
+}
+/* 惧渊临境：降级被怪物阻难 */
+var MONSTER_TAUNTS = ['它们不让……','还差一点……','你逃不掉的。','别碰那个。','已经来不及了。','它们在看。'];
+var _abyssCloseTaps = 0;
+function monsterBlock(){
+  jumpScare(2);
+  var panel = document.querySelector('#setLayer .panel');
+  if(panel){
+    panel.classList.add('dodge');
+    var x = (Math.random()-0.5)*140, y = (Math.random()-0.5)*90;
+    panel.style.transform = 'translate('+x+'px,'+y+'px) rotate('+(Math.random()*8-4)+'deg)';
+    setTimeout(function(){ panel.style.transition='transform .3s'; panel.style.transform=''; setTimeout(function(){ panel.classList.remove('dodge'); panel.style.transition=''; }, 320); }, 900);
+  }
+  toast(MONSTER_TAUNTS[Math.floor(Math.random()*MONSTER_TAUNTS.length)]);
+}
+function closeAbyss(){
+  _abyssCloseTaps++;
+  var btn = document.getElementById('extToggle');
+  if(_abyssCloseTaps < 3){
+    monsterBlock();
+    btn.textContent = '关闭惧渊临境（还需点 ' + (3 - _abyssCloseTaps) + ' 次）';
+    return;
+  }
+  _abyssCloseTaps = 0;
+  S.settings.horror = 'hell';
+  writeSave(); applyVisual(); applySettings(); startHorrorTick();
+  toast('已降级为「地狱」档');
+  buildSettings();
+}
+var clearArmed = false, clearTimer = null;
+function clearSave(){
+  var b = document.getElementById('setClear');
+  if(!clearArmed){
+    clearArmed = true;
+    b.textContent = '再点一次，彻底抹掉';
+    if(clearTimer) clearTimeout(clearTimer);
+    clearTimer = setTimeout(function(){ clearArmed = false; b.textContent = '删除存档'; }, 3500);
+    return;
+  }
+  if(clearTimer) clearTimeout(clearTimer);
+  clearArmed = false;
+  b.textContent = '删除存档';
+  _played = false;
+  try{ localStorage.removeItem(SAVE_KEY); localStorage.removeItem(FIRST_KEY); localStorage.removeItem(PLAYED_KEY); localStorage.removeItem(PLAYS_KEY); }catch(e){}
+  S = defSave();
+  applyVisual(); applySettings(); buildSettings();
+  toast('存档已删除');
+}
+function previewSpeed(){ var l=document.createElement('label'); l.className='chk'; var s=document.createElement('span'); s.textContent='雾在变浓。'; l.appendChild(s); document.getElementById('setItems').appendChild(l); tAdd(s,'雾在变浓。'); }
+function applySettings(){
+  document.body.classList.toggle('no-fx', S.settings.noFx);
+  var bgm=document.getElementById('audio');
+  var wantBgm = S.settings.bgm || abyssOn();
+  if(wantBgm){ if(!bgm){ bgm=document.createElement('audio'); bgm.id='audio'; bgm.src='assets/bgm.mp3'; bgm.loop=true; bgm.volume=.35; document.getElementById('app').appendChild(bgm); } if(bgm.paused) bgm.play().catch(function(){}); }
+  else if(bgm) bgm.pause();
+}
+
+/* ================= markdown 渲染 ================= */
+function md(src){
+  var lines = String(src||'').split('\n');
+  var out = [], list = null;
+  function closeList(){ if(list){ out.push('</'+list+'>'); list=null; } }
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function inline(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>'); }
+  for (var i=0;i<lines.length;i++){
+    var t = lines[i].trim();
+    if (t === ''){ closeList(); continue; }
+    if (/^###\s/.test(t)){ closeList(); out.push('<h4>'+inline(t.slice(4))+'</h4>'); }
+    else if (/^##\s/.test(t)){ closeList(); out.push('<h3>'+inline(t.slice(3))+'</h3>'); }
+    else if (/^#\s/.test(t)){ closeList(); out.push('<h3>'+inline(t.slice(2))+'</h3>'); }
+    else if (/^-\s/.test(t)){ if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; } out.push('<li>'+inline(t.slice(2))+'</li>'); }
+    else if (/^>\s/.test(t)){ closeList(); out.push('<blockquote>'+inline(t.slice(2))+'</blockquote>'); }
+    else { closeList(); out.push('<p>'+inline(t)+'</p>'); }
+  }
+  closeList();
+  return out.join('');
+}
+
+/* ================= 惧渊临境开启流程 ================= */
+function openAbyss(){
+  var el = document.getElementById('extreme');
+  document.getElementById('extScroll').innerHTML = md(ABYSS_TEXT);
+  document.getElementById('extCheck').checked = false;
+  document.getElementById('extConfirm').disabled = true;
+  document.getElementById('extAgree').style.opacity = '.4';
+  el.classList.add('on');
+}
+function closeExtreme(){ document.getElementById('extreme').classList.remove('on'); }
+function confirmAbyss(){
+  S.settings.horror = 'abyss';
+  S.settings.bgm = true;
+  writeSave(); applySettings(); applyVisual(); startHorrorTick();
+  closeExtreme();
+  toast('已开启惧渊临境');
+  tryFullscreen();
+  buildSettings();
+}
+
+/* ================= 首次免责声明 ================= */
+function checkDisclaimer(){
+  if(seenDisclaimer()) return;
+  var el = document.getElementById('disclaimer');
+  var txt = document.getElementById('discText');
+  txt.innerHTML = md(DISCLAIMER_TEXT);
+  el.classList.add('on');
+}
+
+/* ================= 全屏 ================= */
+function toggleFullscreen(){
+  if(document.fullscreenElement){ if(document.exitFullscreen) document.exitFullscreen().catch(function(){}); }
+  else { var el=document.documentElement; if(el.requestFullscreen) el.requestFullscreen().catch(function(){ toast('浏览器拒绝了全屏请求，可按 F11 手动全屏'); }); }
+}
+function tryFullscreen(){
+  if(!document.fullscreenElement){ var el=document.documentElement; if(el.requestFullscreen) el.requestFullscreen().catch(function(){}); }
+}
+
+/* ================= 关于 ================= */
+function showAbout(){
+  layer('aboutLayer');
+  var el=document.getElementById('aboutBox'); el.innerHTML='';
+  ABOUT_ROWS.forEach(function(r){
+    var d=document.createElement('div'); d.className='arow';
+    var k=document.createElement('div'); k.className='ak'; k.textContent=r[0];
+    var v=document.createElement('div'); v.className='av'; v.textContent=r[1];
+    d.appendChild(k); d.appendChild(v); el.appendChild(d);
+  });
+  ABOUT_SECTIONS.forEach(function(s){
+    var h=document.createElement('div'); h.className='sec'; h.textContent=s[0];
+    var p=document.createElement('p'); p.textContent=s[1]; p.style.margin='2px 0 8px';
+    el.appendChild(h); el.appendChild(p);
+  });
+}
+function openPause(){ if(!layerOn('story') || RUN.ended) return; document.getElementById('pause').classList.add('on'); }
+function closePause(){ document.getElementById('pause').classList.remove('on'); }
+function exitToMenu(){ document.getElementById('pause').classList.remove('on'); tClear(); clearGame(); hideTimeline(); showMenu(); }
+
+/* ================= 事件 ================= */
+function tap(id, fn){ document.getElementById(id).addEventListener('click', function(ev){ ev.stopPropagation(); if(GAME.active) return; if(T.cur||T.hold){ skipType(); return; } fn(); }); }
+tap('btnStart', function(){ startGame(); });
+tap('btnGallery', function(){ layer('gallery'); buildGallery(); });
+tap('galBack', function(){ layer('menu'); refreshMenu(); });
+tap('btnSet', function(){ layer('setLayer'); buildSettings(); });
+tap('setBack', function(){ layer('menu'); refreshMenu(); });
+tap('setFull', toggleFullscreen);
+tap('setReload', function(){ location.reload(); });
+tap('setClear', clearSave);
+tap('footAbout', showAbout);
+tap('footFull', toggleFullscreen);
+tap('aboutBack', function(){ layer('menu'); refreshMenu(); });
+tap('endHome', function(){ layer('menu'); refreshMenu(); });
+tap('endGal', function(){ layer('gallery'); buildGallery(); });
+tap('modalClose', function(){ document.getElementById('modal').classList.remove('on'); });
+tap('pauseResume', closePause);
+tap('pauseExit', exitToMenu);
+tap('discSet', function(){ document.getElementById('disclaimer').classList.remove('on'); markSeen(); layer('setLayer'); buildSettings(); });
+tap('discStart', function(){ document.getElementById('disclaimer').classList.remove('on'); markSeen(); showMenu(); });
+tap('extCancel', closeExtreme);
+tap('extConfirm', confirmAbyss);
+tap('btnTimeline', toggleTimeline);
+
+// 标题连点触发 H2（惧渊临境）
+document.getElementById('titleWrap').addEventListener('click', function(ev){ ev.stopPropagation(); if(GAME.active) return; if(T.cur||T.hold){ skipType(); return; } titleTap(); });
+
+document.getElementById('extScroll').addEventListener('scroll', function(){
+  var el = this;
+  var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+  if(atBottom) document.getElementById('extAgree').style.opacity = '1';
+});
+document.getElementById('extCheck').addEventListener('change', function(){
+  document.getElementById('extConfirm').disabled = !this.checked;
+});
+
+document.addEventListener('click', function(e){
+  if(GAME.active) return;
+  var t=e.target;
+  if(t.tagName==='BUTTON'||t.tagName==='INPUT'||t.tagName==='SELECT'||t.closest('.cell')||t.closest('.galTab')||t.closest('#titleWrap')) return;
+  if(T.cur||T.hold) skipType();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key===' '||e.key==='Enter'){ var tag=(e.target.tagName||'').toLowerCase(); if(tag==='input'||tag==='textarea'||tag==='select') return; if(GAME.active) return; e.preventDefault(); skipType(); }
+  if(e.key==='Escape'){ if(document.getElementById('extreme').classList.contains('on')){ closeExtreme(); return; } if(document.getElementById('pause').classList.contains('on')) closePause(); else openPause(); }
+});
+
+/* ================= 启动 ================= */
+loadSave(); applySettings(); applyVisual(); showMenu(); checkDisclaimer(); startHorrorTick();
+(function(){
+  var intro=document.getElementById('intro'), done=false;
+  function enter(){ if(done) return; done=true; intro.classList.add('off'); flashFace(); }
+  intro.addEventListener('click', enter);
+  setTimeout(function(){
+    var t = document.getElementById('logoText');
+    if(t) t.style.fill = '#e8dccd';
+  }, 2600);
+  setTimeout(function(){ var s=document.getElementById('introSub'); if(s) s.classList.add('on'); }, 3400);
+  setTimeout(enter, 5200);
+})();
+</script>
+</body>
+</html>
