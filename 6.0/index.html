@@ -123,7 +123,8 @@ h2{font-size:22px;letter-spacing:6px;color:#d8c8b8;font-weight:400;text-align:ce
 #setBtns{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
 .extWarn{font-size:12px;letter-spacing:1px;color:#c0392b;line-height:1.8;border:1px solid rgba(190,40,30,.4);padding:10px;background:rgba(40,10,8,.5)}
 /* 极度恐怖：降级被阻难时面板躲避动画 */
-#setLayer .panel{transition:transform .12s}
+#setLayer{overflow-y:auto;justify-content:flex-start}
+#setLayer .panel{margin:auto;transition:transform .12s}
 #setLayer .panel.dodge{transition:none}
 /* 关于（标准格式） */
 #aboutBox{width:min(520px,100%);text-align:left;font-size:14px;line-height:1.9;letter-spacing:1px;color:#bfae9e;overflow-y:auto;max-height:72vh}
@@ -265,7 +266,7 @@ body.blood #storyText,body.blood #endText{color:#cbb0a0}
         style="animation:write 2.6s ease forwards;transform:skewX(-14deg);transform-box:fill-box;transform-origin:center">雾港</text>
       <style>@keyframes write{to{stroke-dashoffset:0}}</style>
     </svg>
-    <div class="subtitle" id="introSub">v6.0-snapshot 3</div>
+    <div class="subtitle" id="introSub">v6.0-snapshot 4</div>
     <div class="tip">点击进入</div>
   </div>
 
@@ -538,7 +539,7 @@ var ABYSS_TEXT = [
 var ABOUT_ROWS = [
   ['游戏名称','雾港'],
   ['作者','czy'],
-  ['版本','6.0-snapshot 3'],
+  ['版本','6.0-snapshot 4'],
   ['类型','文字冒险 · 恐怖 · 多结局'],
   ['适龄提示','18+ · 含心理恐怖与突发惊吓'],
   ['平台','网页 · 桌面 / 移动端浏览器'],
@@ -1406,22 +1407,20 @@ function detailHidden(id){
 
 /* ================= 兑换码 ================= */
 var REDEEM_CODES = [
-  { key:'白灯笼', alias:['bdl','baidenglong','white'], name:'全部「白灯笼」结局', ids:function(){ return GROUPS[0]?GROUPS[0].ids:[]; } },
-  { key:'义庄',   alias:['yz','yizhuang'], name:'全部「义庄」结局', ids:function(){ return GROUPS[1]?GROUPS[1].ids:[]; } },
-  { key:'渡口',   alias:['dk','dukou'], name:'全部「渡口」结局', ids:function(){ return GROUPS[2]?GROUPS[2].ids:[]; } },
-  { key:'旁支',   alias:['side','pz'], name:'全部旁支结局', ids:function(){ return SIDE_IDS; } },
-  { key:'隐藏',   alias:['hidden','yc'], name:'隐藏结局', ids:function(){ return HIDDEN_IDS; } },
-  { key:'全部',   alias:['all','qb'], name:'全部结局（含旁支）', ids:function(){ return Object.keys(TREE.endings).concat(SIDE_IDS); } },
-  { key:'雾港',   alias:['wugang'], name:'全部结局（含隐藏）', ids:function(){ return Object.keys(TREE.endings).concat(SIDE_IDS).concat(HIDDEN_IDS); } }
+  { code:'wg7k3mq2x9', name:'全部「白灯笼」结局', ids:function(){ return GROUPS[0]?GROUPS[0].ids:[]; } },
+  { code:'wg9c4n8t2v', name:'全部「义庄」结局', ids:function(){ return GROUPS[1]?GROUPS[1].ids:[]; } },
+  { code:'wg3q8z5m1x', name:'全部「渡口」结局', ids:function(){ return GROUPS[2]?GROUPS[2].ids:[]; } },
+  { code:'wg6p2k7r4y', name:'全部旁支结局', ids:function(){ return SIDE_IDS; } },
+  { code:'wg1m4s9n6w', name:'隐藏结局', ids:function(){ return HIDDEN_IDS; } },
+  { code:'wg8t5v2b7j', name:'全部结局（含旁支）', ids:function(){ return Object.keys(TREE.endings).concat(SIDE_IDS); } },
+  { code:'wg0a9d3f6g', name:'全部结局（含隐藏）', ids:function(){ return Object.keys(TREE.endings).concat(SIDE_IDS).concat(HIDDEN_IDS); } }
 ];
 function redeemCode(input){
   var code = String(input||'').trim().toLowerCase();
   if(!code){ toast('请输入兑换码'); return; }
   var hit = null;
   for(var i=0;i<REDEEM_CODES.length;i++){
-    var c = REDEEM_CODES[i];
-    var keys = [c.key.toLowerCase()].concat(c.alias);
-    if(keys.indexOf(code) >= 0){ hit = c; break; }
+    if(REDEEM_CODES[i].code.toLowerCase() === code){ hit = REDEEM_CODES[i]; break; }
   }
   if(!hit){ toast('兑换码无效'); return; }
   var ids = hit.ids();
@@ -1439,12 +1438,76 @@ function buildRedeemUI(box){
   var btn = document.createElement('button'); btn.className='btn sm'; btn.textContent='兑换'; btn.id='redeemBtn';
   btn.onclick = function(){ redeemCode(inp.value); inp.value=''; };
   row.appendChild(inp); row.appendChild(btn); wrap.appendChild(row);
-  var hint = document.createElement('div'); hint.className='redeemHint'; hint.id='redeemHint'; hint.style.display='none';
-  hint.textContent = '可用：' + REDEEM_CODES.map(function(c){ return c.key; }).join('　');
-  wrap.appendChild(hint);
-  var toggle = document.createElement('span'); toggle.className='redeemToggle'; toggle.id='redeemToggle'; toggle.textContent='查看可用兑换码';
-  toggle.onclick = function(){ var h=document.getElementById('redeemHint'); if(h.style.display==='none'){ h.style.display='block'; this.textContent='收起'; } else { h.style.display='none'; this.textContent='查看可用兑换码'; } };
-  wrap.appendChild(toggle); box.appendChild(wrap);
+  box.appendChild(wrap);
+}
+/* ================= 存档码（导出/导入） ================= */
+function saveToCode(){
+  var json = JSON.stringify(S);
+  return btoa(unescape(encodeURIComponent(json)));
+}
+function codeToSave(code){
+  var json = decodeURIComponent(escape(atob(code)));
+  return JSON.parse(json);
+}
+function isMobileDevice(){
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window && window.innerWidth < 820);
+}
+function exportSave(){
+  var code = saveToCode();
+  var inp = document.getElementById('importCodeInput');
+  if(inp) inp.value = code;
+  var copied = false;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(function(){ toast('存档码已复制'); }).catch(function(){});
+    copied = true;
+  }
+  if(!isMobileDevice()){
+    try {
+      var blob = new Blob([code], {type:'text/plain;charset=utf-8'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      var d = new Date();
+      function pad(n){ return (n<10?'0':'')+n; }
+      a.download = '雾港存档码-' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      toast('存档码已复制并下载');
+    } catch(e){ if(!copied) toast('存档码已生成'); }
+  }
+}
+function importSave(){
+  var inp = document.getElementById('importCodeInput');
+  var code = (inp ? inp.value : '').trim();
+  if(!code){ toast('请先粘贴存档码'); return; }
+  try {
+    var o = codeToSave(code);
+    if(!o || typeof o !== 'object') throw new Error('bad');
+    S = Object.assign(defSave(), o);
+    S.settings = Object.assign(defSettings(), o.settings || {});
+    writeSave();
+    applySettings(); applyVisual();
+    toast('存档已导入');
+    if(inp) inp.value = '';
+  } catch(e){
+    toast('存档码无效');
+  }
+}
+function buildSaveCodeUI(box){
+  var wrap = document.createElement('div'); wrap.className='redeemBox';
+  var t = document.createElement('div'); t.className='redeemTitle'; t.textContent='存档码'; wrap.appendChild(t);
+  var row1 = document.createElement('div'); row1.className='redeemRow';
+  var btnExp = document.createElement('button'); btnExp.className='btn sm'; btnExp.textContent='导出存档码'; btnExp.id='exportSaveBtn';
+  btnExp.onclick = exportSave;
+  row1.appendChild(btnExp); wrap.appendChild(row1);
+  var row2 = document.createElement('div'); row2.className='redeemRow';
+  var inp = document.createElement('input'); inp.type='text'; inp.className='redeemInput'; inp.placeholder='粘贴存档码后导入'; inp.id='importCodeInput';
+  var btnImp = document.createElement('button'); btnImp.className='btn sm'; btnImp.textContent='导入'; btnImp.id='importSaveBtn';
+  btnImp.onclick = importSave;
+  row2.appendChild(inp); row2.appendChild(btnImp);
+  wrap.appendChild(row2);
+  box.appendChild(wrap);
 }
 
 /* ================= 设置 ================= */
@@ -1510,6 +1573,7 @@ function buildSettings(){
   extBtn.onclick = abyssOn() ? closeAbyss : openAbyss;
   extWrap.appendChild(extBtn); box.appendChild(extWrap);
   buildRedeemUI(box);
+  buildSaveCodeUI(box);
 }
 /* 惧渊临境：降级被怪物阻难 */
 var MONSTER_TAUNTS = ['它们不让……','还差一点……','你逃不掉的。','别碰那个。','已经来不及了。','它们在看。'];
